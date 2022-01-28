@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+
+import yaml
+import os
+import argparse
+
+parser = argparse.ArgumentParser(description='Generate service definition header.')
+parser.add_argument('--outdir', type=str, help='output directory for ln_msg_def files')
+parser.add_argument('--indir', type=str, help='input directory with svc_def files')
+parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
+                    help='yaml service definition files')
+
+args = parser.parse_args()
+
+def service_datatype_to_ln(datatype):
+    if datatype == "string":
+        return "char*"
+
+    return datatype        
+
+def is_primitive(datatype):
+    if datatype == "string":
+        return False
+
+    return True
+
+def create_struct(sd, fd, sd_name):
+    def insert_entry(entry, fd):
+        for key, value in entry.items():
+            if key.startswith('vector'):
+                tmp, real_key = key.split('/', 1)
+                dt = service_datatype_to_ln(real_key)
+
+                if not is_primitive(real_key):
+                    tmp_msg_def_name = key.replace('/', '_')
+
+                    if real_key == "string":
+                        tmp_msg_def_name = 'ln/string'
+                    else:
+                        with open(os.path.join(os.path.dirname(fd.name), tmp_msg_def_name), 'w+') as sub_msg_def:
+                            sub_msg_def.write(f'{dt} data\n')
+
+                    fd.write(f'define {real_key} as {tmp_msg_def_name}\n')
+                    fd.write(f'{real_key}* {value}\n')
+                else:
+                    fd.write(f'{dt}* {value}\n')
+            else:
+                dt = service_datatype_to_ln(key)
+                fd.write(f'{dt} {value}\n')
+
+    if "request" in sd:
+        fd.write(f'request\n')
+
+        for entry in sd["request"]:
+            insert_entry(entry, fd)
+
+    if "response" in sd:
+        fd.write(f'response\n')
+
+        for entry in sd["response"]:
+            insert_entry(entry, fd)
+
+for fn in args.sd_files:
+    sd = None
+    sd_name = os.path.join(args.indir, fn)
+    ln_name = os.path.join(args.outdir, fn)
+
+    print("try to open %s\n" % (sd_name))
+    
+    with open(sd_name, 'r') as stream:
+        sd = yaml.load(stream)
+        
+    print (sd)
+
+    os.makedirs(os.path.dirname(ln_name), exist_ok=True)
+
+    with open(ln_name, 'w+') as stream:
+        create_struct(sd, stream, sd_name)
+
+
+
