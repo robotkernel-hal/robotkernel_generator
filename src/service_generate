@@ -42,6 +42,7 @@ def create_header(fd):
 #include <unistd.h>
 #include <string>
 #include <robotkernel/service.h>
+#include <robotkernel/robotkernel.h>
 
 #ifndef SERVICE_DEFINITIONS__H
 #define SERVICE_DEFINITIONS__H
@@ -73,15 +74,146 @@ def is_primitive(datatype):
 
     return True
 
-def create_sd_string(sd, fd, sd_name, indent=""):
+def decode_datatype(datatype):
+    if datatype == "string":
+        return "std::string"
+
+    return datatype
+
+def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     lines = []
-    lines.append(f'{indent}static const std::string {sd_name}_service_definition = ')
-    for line in yaml.dump(sd).split('\n'):
-        if line != "":
-            lines.append(f'{indent}"{line}\\n"')
+    
+    def create_def(sd):
+        tmp = []
+        inputlines = yaml.dump(sd).split('\n')
+        for line in inputlines:
+            if line != "":
+                tmp.append(f'{indent}"{line}\\n"')
+        return '\n'.join(tmp)
+
+    def create_entries(etype, sd, indent):
+        tmp = []
+        if etype in sd:
+            for elem in sd[etype]:
+                for entry in elem:
+                    if entry.startswith('vector'):
+                        real_entry = entry[7:]
+                        tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
+                    else:
+                        tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
+        return '\n'.join(tmp)
+
+    lines.append(
+        f'''
+//=== SERVICE CODE GENERATED FOR {fn_name} ===
+
+//! service definition for {sd_name}
+static const std::string {sd_name}_service_definition =
+{create_def(sd)};
+
+//! service request data structure for {sd_name}
+struct svc_req_{sd_name} {{
+{create_entries('request', sd, '    ')}
+}};
+
+//! service response data structure for {sd_name}
+struct svc_resp_{sd_name} {{
+{create_entries('response', sd, '    ')}
+}};
+
+//! base service class for {sd_name}
+class svc_base_{sd_name} {{
+    private: 
+        //! internal service handler, this one is registered to robotkernel
+        /*!
+         * \param[in]   req     Service request argument list of type 'any'.
+         * \param[out]  resp    Service response argument list of type 'any'.
+         * \return 0
+         */
+        int svc_handler_{sd_name}(const robotkernel::service_arglist_t &req, 
+            robotkernel::service_arglist_t &resp) {{''')
+    
+    lines.append(f'\t\t\tstruct svc_req_{sd_name} local_req;')
+    lines.append(f'\t\t\tstruct svc_resp_{sd_name} local_resp;')
+
+    if 'request' in sd:
+        cnt = 0
+        for elem in sd['request']:
+            for entry in elem:
+                real_entry = entry
+                if entry.startswith('vector'):
+                    real_entry = entry[7:]
+                
+                lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<{decode_datatype(entry)}>(req[{cnt}]);')
+                cnt = cnt + 1
+    lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
+
+    if 'response' in sd:
+        cnt = 0
+        lines.append(f'\t\t\tresp.clear();')
+        for elem in sd['response']:
+            for entry in elem:
+                real_entry = entry
+                if entry.startswith('vector'):
+                    real_entry = entry[7:]
+                    lines.append(f'\t\t\tstd::vector<robotkernel::any> tmp_{elem[entry]};')
+                    lines.append(f'\t\t\tfor (const auto& e : local_resp.{elem[entry]}) {{')
+                    lines.append(f'\t\t\t\ttmp_{elem[entry]}.push_back(e);}}')
+                    lines.append(f'\t\t\tresp.push_back(tmp_{elem[entry]});')
+                else:
+                    lines.append(f'\t\t\tresp.push_back(local_resp.{elem[entry]});')
+                cnt = cnt + 1
+    
+    lines.append(
+        f'''
+            return 0;
+        }}
+
+        std::string local_owner,    //!< \brief local service owner
+                    local_name;     //!< \brief local service name
+
+    public:
+        //! destruction, unregisters service
+        virtual ~svc_base_{sd_name}() {{ 
+            try {{ 
+                remove_svc_{sd_name}(); 
+            }} catch (const std::exception& e) {{ 
+            }} 
+        }};
+
+        //! svc_{sd_name}
+        /*!
+         * \param[in]   req     Service request data.
+         * \param[out]  resp    Service response data.
+         */
+        virtual void svc_{sd_name}(const struct svc_req_{sd_name}& req, 
+            struct svc_resp_{sd_name}& resp) = 0;
+
+        //! adding service to robotkernel service store
+        /*!
+         * \param[in]   owner   Owner of this service.
+         * \param[in]   name    Unique name in 'owner' namespace.
+         */
+        void add_svc_{sd_name}(std::string owner, std::string name) {{
+            robotkernel::robotkernel_handle k;
+            local_owner = owner;
+            local_name = name;
+
+            k.add_service(owner, name, {sd_name}_service_definition, 
+                std::bind(&svc_base_{sd_name}::svc_handler_{sd_name}, 
+                this, std::placeholders::_1, std::placeholders::_2));
+        }}
+        
+        //! remove service from robotkernel service store
+        void remove_svc_{sd_name}(void) {{
+            robotkernel::robotkernel_handle k;
+            k.remove_service(local_owner, local_name);
+        }}
+}};
+''')
 
     outsd = '\n'.join(lines)
-    fd.write(f'{outsd};\n\n')
+    fd.write(f'{outsd}')
 
 for fn in args.sd_files:
     sd = None
@@ -92,7 +224,7 @@ for fn in args.sd_files:
     with open(sd_name, 'r') as stream:
         sd = yaml.load(stream)
         
-    create_sd_string(sd, outfd, fn.replace('/', '_'))
+    create_sd_string(sd, outfd, fn, fn.replace('/', '_'))
 
 create_footer(outfd)
 
