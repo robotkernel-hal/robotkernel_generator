@@ -164,8 +164,9 @@ class svc_base_{sd_name} {{
                 real_entry = entry
                 if entry.startswith('vector'):
                     real_entry = entry[7:]
-                
-                lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<{decode_datatype(real_entry)}>(req[{cnt}]);')
+                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<std::vector<{decode_datatype(real_entry)}> >(req[{cnt}]);')
+                else:
+                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<{decode_datatype(entry)}>(req[{cnt}]);')
                 cnt = cnt + 1
     lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
 
