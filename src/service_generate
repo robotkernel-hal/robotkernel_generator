@@ -83,6 +83,21 @@ def decode_datatype(datatype):
 def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     lines = []
     
+    parts = fn_name.split('/')
+    sd_name = parts[-1]
+
+    def create_namespace_opens(parts):
+        tmp = []
+        for d in parts[:-1]:
+            tmp.append(f'namespace {d} {{')
+        return '\n'.join(tmp)
+    
+    def create_namespace_closes(parts):
+        tmp = []
+        for d in parts[:-1]:
+            tmp.append(f'}} // namespace {d}')
+        return '\n'.join(tmp)
+
     def create_def(sd):
         tmp = []
         inputlines = yaml.dump(sd).split('\n')
@@ -107,6 +122,8 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
         f'''
 //=== SERVICE CODE GENERATED FOR {fn_name} ===
 
+{create_namespace_opens(parts)}
+ 
 //! service definition for {sd_name}
 static const std::string {sd_name}_service_definition =
 {create_def(sd)};
@@ -130,8 +147,10 @@ class svc_base_{sd_name} {{
          * \param[out]  resp    Service response argument list of type 'any'.
          * \return 0
          */
-        int svc_handler_{sd_name}(const robotkernel::service_arglist_t &req, 
-            robotkernel::service_arglist_t &resp) {{''')
+        int svc_handler_{sd_name}(
+            const robotkernel::service_arglist_t &req, 
+            robotkernel::service_arglist_t &resp) 
+        {{''')
     
     lines.append(f'\t\t\tstruct svc_req_{sd_name} local_req;')
     lines.append(f'\t\t\tstruct svc_resp_{sd_name} local_resp;')
@@ -186,7 +205,8 @@ class svc_base_{sd_name} {{
          * \param[in]   req     Service request data.
          * \param[out]  resp    Service response data.
          */
-        virtual void svc_{sd_name}(const struct svc_req_{sd_name}& req, 
+        virtual void svc_{sd_name}(
+            const struct svc_req_{sd_name}& req, 
             struct svc_resp_{sd_name}& resp) = 0;
 
         //! adding service to robotkernel service store
@@ -199,7 +219,8 @@ class svc_base_{sd_name} {{
             local_owner = owner;
             local_name = name;
 
-            k.add_service(owner, name, {sd_name}_service_definition, 
+            k.add_service(owner, name, 
+                {sd_name}_service_definition, 
                 std::bind(&svc_base_{sd_name}::svc_handler_{sd_name}, 
                 this, std::placeholders::_1, std::placeholders::_2));
         }}
@@ -210,6 +231,8 @@ class svc_base_{sd_name} {{
             k.remove_service(local_owner, local_name);
         }}
 }};
+
+{create_namespace_closes(parts)}
 ''')
 
     outsd = '\n'.join(lines)
