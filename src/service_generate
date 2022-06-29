@@ -42,6 +42,7 @@ def create_header(fd, name):
 
 #include <unistd.h>
 #include <string>
+#include <vector>
 #include <robotkernel/service.h>
 #include <robotkernel/robotkernel.h>
 
