@@ -1,0 +1,16 @@
+Source: robotkernel-service-helper
+Section: unknown
+Priority: optional
+Maintainer: Robert Burger <robert.burger@dlr.de>
+Build-Depends: debhelper-compat (= 13), python3-yaml (>= 5)
+Standards-Version: 4.5.1
+Homepage: <insert the upstream URL, if relevant>
+#Vcs-Browser: https://salsa.debian.org/debian/robotkernel-service-helper
+#Vcs-Git: https://salsa.debian.org/debian/robotkernel-service-helper.git
+Rules-Requires-Root: no
+
+Package: robotkernel-service-helper
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, python3-yaml (>= 5)
+Description: <insert up to 60 chars description>
+ <insert long description, indented with spaces>
