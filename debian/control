@@ -4,13 +4,13 @@ Priority: optional
 Maintainer: Robert Burger <robert.burger@dlr.de>
 Build-Depends: debhelper-compat (= 13), python3-yaml (>= 5)
 Standards-Version: 4.5.1
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Browser: https://salsa.debian.org/debian/robotkernel-service-helper
-#Vcs-Git: https://salsa.debian.org/debian/robotkernel-service-helper.git
+Homepage: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper
+Vcs-Browser: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper
+Vcs-Git: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper.git
 Rules-Requires-Root: no
 
 Package: robotkernel-service-helper
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, python3-yaml (>= 5)
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Description: Helper to generate robotkernel service header from service message description files.
+ This helper read service message description files and generate usable c++-headers.
