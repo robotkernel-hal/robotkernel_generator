@@ -62,6 +62,7 @@ def create_footer(fd, name):
     
     fd.write(ftr)
 
+print("creating header: %s" % (args.name))
 create_header(outfd, args.name)
 
 def service_datatype_to_ln(datatype):
@@ -147,7 +148,7 @@ class svc_base_{sd_name} {{
         /*!
          * \param[in]   req     Service request argument list of type 'any'.
          * \param[out]  resp    Service response argument list of type 'any'.
-         * \return 0
+         * \\return 0
          */
         int svc_handler_{sd_name}(
             const robotkernel::service_arglist_t &req, 
