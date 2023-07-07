@@ -62,8 +62,11 @@ def create_footer(fd, name):
     
     fd.write(ftr)
 
-print("creating header: %s" % (args.name))
-create_header(outfd, args.name)
+prefix = args.name
+if prefix is None:
+    prefix = "UNSPECIFIED"
+
+create_header(outfd, prefix)
 
 def service_datatype_to_ln(datatype):
     if datatype == "string":
@@ -249,9 +252,9 @@ for fn in args.sd_files:
     print("service_generate: processing %s" % (sd_name))
     
     with open(sd_name, 'r') as stream:
-        sd = yaml.load(stream)
+        sd = yaml.load(stream, Loader=yaml.FullLoader)
         
     create_sd_string(sd, outfd, fn, fn.replace('/', '_'))
 
-create_footer(outfd, args.name)
+create_footer(outfd, prefix)
 
