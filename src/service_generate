@@ -17,6 +17,15 @@ print('service_generate: writing output to %s' % args.out)
 
 outfd = open(args.out, 'w+')
 
+import random
+import string
+
+def get_random_string(length):
+    # choose from all uppercase letter
+    letters = string.ascii_uppercase
+    result_str = ''.join(random.choice(letters) for i in range(length))
+    return result_str
+
 def create_header(fd, name):
     hdr = f'''//! robotkernel service deinition header
 /*!
@@ -44,7 +53,7 @@ def create_header(fd, name):
 #include <string>
 #include <vector>
 #include <robotkernel/service.h>
-#include <robotkernel/robotkernel.h>
+#include <robotkernel/kernel.h>
 
 #ifndef {name.upper()}_SERVICE_DEFINITIONS__H
 #define {name.upper()}_SERVICE_DEFINITIONS__H
@@ -64,7 +73,7 @@ def create_footer(fd, name):
 
 prefix = args.name
 if prefix is None:
-    prefix = "UNSPECIFIED"
+    prefix = get_random_string(32)
 
 create_header(outfd, prefix)
 
@@ -86,11 +95,15 @@ def decode_datatype(datatype):
 
     return datatype
 
+global_defs = {}
+
 def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     lines = []
     
     parts = fn_name.split('/')
     sd_name = parts[-1]
+
+    global_defs[fn_name] = parts
 
     def create_namespace_opens(parts):
         tmp = []
@@ -109,6 +122,7 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
         inputlines = yaml.dump(sd).split('\n')
         for line in inputlines:
             if line != "":
+                line = line.replace('\\', '\\\\').replace('"', '\\"')
                 tmp.append(f'{indent}"{line}\\n"')
         return '\n'.join(tmp)
 
@@ -168,9 +182,9 @@ class svc_base_{sd_name} {{
                 real_entry = entry
                 if entry.startswith('vector'):
                     real_entry = entry[7:]
-                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<std::vector<{decode_datatype(real_entry)}> >(req[{cnt}]);')
+                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::convertVector2<{decode_datatype(real_entry)}>(req[{cnt}]);')
                 else:
-                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::any_cast<{decode_datatype(entry)}>(req[{cnt}]);')
+                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
                 cnt = cnt + 1
     lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
 
@@ -182,7 +196,7 @@ class svc_base_{sd_name} {{
                 real_entry = entry
                 if entry.startswith('vector'):
                     real_entry = entry[7:]
-                    lines.append(f'\t\t\tstd::vector<robotkernel::any> tmp_{elem[entry]};')
+                    lines.append(f'\t\t\tstd::vector<robotkernel::rk_type> tmp_{elem[entry]};')
                     lines.append(f'\t\t\tfor (const auto& e : local_resp.{elem[entry]}) {{')
                     lines.append(f'\t\t\t\ttmp_{elem[entry]}.push_back(e);}}')
                     lines.append(f'\t\t\tresp.push_back(tmp_{elem[entry]});')
@@ -222,7 +236,7 @@ class svc_base_{sd_name} {{
          * \param[in]   name    Unique name in 'owner' namespace.
          */
         void add_svc_{sd_name}(std::string owner, std::string name) {{
-            robotkernel::robotkernel_handle k;
+            robotkernel::kernel& k = *robotkernel::kernel::get_instance();
             local_owner = owner;
             local_name = name;
 
@@ -234,7 +248,7 @@ class svc_base_{sd_name} {{
         
         //! remove service from robotkernel service store
         void remove_svc_{sd_name}(void) {{
-            robotkernel::robotkernel_handle k;
+            robotkernel::kernel& k = *robotkernel::kernel::get_instance();
             k.remove_service(local_owner, local_name);
         }}
 }};
@@ -258,6 +272,14 @@ for fn in args.sd_files:
             sd = yaml.load(stream)
         
     create_sd_string(sd, outfd, fn, fn.replace('/', '_'))
+
+lines = []
+
+for k, v in global_defs.items():
+    lines.append("const std::string " + "_".join(v) + "_service_definition = " + "::".join(v) + "_service_definition;")
+
+outfd.write('\n')
+outfd.write('\n'.join(lines))
 
 create_footer(outfd, prefix)
 
