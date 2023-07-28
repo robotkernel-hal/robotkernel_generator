@@ -90,7 +90,7 @@ for fn in args.sd_files:
     print("service_generate: processing %s" % (sd_name))
     
     with open(sd_name, 'r') as stream:
-        sd = yaml.load(stream)
+        sd = yaml.load(stream, Loader=yaml.SafeLoader)
         
     create_sd_string(sd, outfd, fn.replace('/', '_'))
 
