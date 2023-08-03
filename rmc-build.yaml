@@ -1,6 +1,7 @@
-context: conan
-configurations:
-- any:
-    build_type: {Release, Debug}
-- osl15-x86_64
-- osl42-x86_64
+_: &build_configs
+  - imports: [linux_defaults]
+
+builds:
+  - context: conan
+    build_file: conanfile.py
+    configurations: *build_configs
