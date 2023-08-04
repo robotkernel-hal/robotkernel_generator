@@ -10,6 +10,7 @@ parser.add_argument('--indir', type=str, help='input directory with svc_def file
 parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
                     help='yaml service definition files')
 parser.add_argument('--name', type=str, help='base service definition name')
+parser.add_argument('--add_namespace', type=str, help='additional base namespace')
 
 args = parser.parse_args()
 
@@ -76,6 +77,10 @@ if prefix is None:
     prefix = get_random_string(32)
 
 create_header(outfd, prefix)
+
+add_namespace = args.add_namespace
+if add_namespace is not None:
+    outfd.write(f'namespace {add_namespace} {{\n') 
 
 def service_datatype_to_ln(datatype):
     if datatype == "string":
@@ -168,8 +173,8 @@ class svc_base_{sd_name} {{
          * \\return 0
          */
         int svc_handler_{sd_name}(
-            const robotkernel::service_arglist_t &req, 
-            robotkernel::service_arglist_t &resp) 
+            const ::robotkernel::service_arglist_t &req, 
+            ::robotkernel::service_arglist_t &resp) 
         {{''')
     
     lines.append(f'\t\t\tstruct svc_req_{sd_name} local_req;')
@@ -182,11 +187,11 @@ class svc_base_{sd_name} {{
                 real_entry = entry
                 if entry.startswith('vector'):
                     real_entry = entry[7:]
-                    lines.append(f'\t\t\tfor (const auto& value : robotkernel::rk_type_cast<std::vector<robotkernel::rk_type> >(req[{cnt}])) {{')
-                    lines.append(f'\t\t\t\tlocal_req.{elem[entry]}.push_back(robotkernel::rk_type_cast<{decode_datatype(real_entry)}>(value));')
+                    lines.append(f'\t\t\tfor (const auto& value : ::robotkernel::rk_type_cast<std::vector<::robotkernel::rk_type> >(req[{cnt}])) {{')
+                    lines.append(f'\t\t\t\tlocal_req.{elem[entry]}.push_back(::robotkernel::rk_type_cast<{decode_datatype(real_entry)}>(value));')
                     lines.append(f'\t\t\t}};')
                 else:
-                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
+                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = ::robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
                 cnt = cnt + 1
     lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
 
@@ -198,7 +203,7 @@ class svc_base_{sd_name} {{
                 real_entry = entry
                 if entry.startswith('vector'):
                     real_entry = entry[7:]
-                    lines.append(f'\t\t\tstd::vector<robotkernel::rk_type> tmp_{elem[entry]};')
+                    lines.append(f'\t\t\tstd::vector<::robotkernel::rk_type> tmp_{elem[entry]};')
                     lines.append(f'\t\t\tfor (const auto& e : local_resp.{elem[entry]}) {{')
                     lines.append(f'\t\t\t\ttmp_{elem[entry]}.push_back(e);}}')
                     lines.append(f'\t\t\tresp.push_back(tmp_{elem[entry]});')
@@ -238,7 +243,7 @@ class svc_base_{sd_name} {{
          * \param[in]   name    Unique name in 'owner' namespace.
          */
         void add_svc_{sd_name}(std::string owner, std::string name) {{
-            robotkernel::kernel& k = *robotkernel::kernel::get_instance();
+            ::robotkernel::kernel& k = *::robotkernel::kernel::get_instance();
             local_owner = owner;
             local_name = name;
 
@@ -250,7 +255,7 @@ class svc_base_{sd_name} {{
         
         //! remove service from robotkernel service store
         void remove_svc_{sd_name}(void) {{
-            robotkernel::kernel& k = *robotkernel::kernel::get_instance();
+            ::robotkernel::kernel& k = *::robotkernel::kernel::get_instance();
             k.remove_service(local_owner, local_name);
         }}
 }};
@@ -282,6 +287,9 @@ for k, v in global_defs.items():
 
 outfd.write('\n')
 outfd.write('\n'.join(lines))
+
+if add_namespace is not None:
+    outfd.write(f'\n\n}} // namespace {add_namespace}\n') 
 
 create_footer(outfd, prefix)
 
