@@ -1,7 +1,9 @@
-from conan import ConanFile, conan_version
-from conan.tools.scm import Version
-from conan.tools.files import copy
 import os
+
+from conan import ConanFile, conan_version
+from conan.tools.files import copy
+from conan.tools.scm import Version
+
 
 class MainProject(ConanFile):
     package_type = "build-scripts"
@@ -17,14 +19,14 @@ class MainProject(ConanFile):
         pass
 
     def package(self):
-        copy(self,"scripts/*", self.source_folder, self.package_folder)
-        copy(self,"share/*", self.source_folder, self.package_folder)
-        copy(self,"src/*", self.source_folder, self.package_folder)
+        copy(self, "scripts/*", self.source_folder, self.package_folder)
+        copy(self, "share/*", self.source_folder, self.package_folder)
+        copy(self, "src/*", self.source_folder, self.package_folder)
 
     def package_info(self):
-        self.cpp_info.bindirs = ['src']
+        self.cpp_info.bindirs = ["src"]
         if Version(conan_version) < "2.0.0":
-            self.env_info.PATH.append(os.path.join(self.package_folder, 'src'))
-            self.env_info.PYTHONPATH.append(os.path.join(self.package_folder, 'src'))
-        self.runenv_info.append_path("PATH", os.path.join(self.package_folder, 'src'))
-        self.runenv_info.append_path("PYTHONPATH", os.path.join(self.package_folder, 'src'))
+            self.env_info.PATH.append(os.path.join(self.package_folder, "src"))
+            self.env_info.PYTHONPATH.append(os.path.join(self.package_folder, "src"))
+        self.runenv_info.append_path("PATH", os.path.join(self.package_folder, "src"))
+        self.runenv_info.append_path("PYTHONPATH", os.path.join(self.package_folder, "src"))
