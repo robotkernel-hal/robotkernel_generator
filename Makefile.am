@@ -1,0 +1,1 @@
+dist_bin_SCRIPTS=src/service_generate
