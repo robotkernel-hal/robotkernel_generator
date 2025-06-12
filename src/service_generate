@@ -11,6 +11,7 @@ parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
                     help='yaml service definition files')
 parser.add_argument('--name', type=str, help='base service definition name')
 parser.add_argument('--add_namespace', type=str, help='additional base namespace')
+parser.add_argument('--create-hdr-src-pair', action=argparse.BooleanOptionalAction)
 
 args = parser.parse_args()
 
@@ -54,9 +55,13 @@ def create_header(fd, name):
 #include <string>
 #include <vector>
 #include <robotkernel/service.h>
-#include <robotkernel/kernel.h>
+'''
+    fd.write(hdr)
+    if not args.create_hdr_src_pair:
+        fd.write(f'''#include "robotkernel/kernel_base.h"
+''')
 
-#ifndef {name.upper()}_SERVICE_DEFINITIONS__H
+    hdr = f'''#ifndef {name.upper()}_SERVICE_DEFINITIONS__H
 #define {name.upper()}_SERVICE_DEFINITIONS__H
 
 '''
@@ -241,23 +246,30 @@ class svc_base_{sd_name} {{
         /*!
          * \param[in]   owner   Owner of this service.
          * \param[in]   name    Unique name in 'owner' namespace.
-         */
-        void add_svc_{sd_name}(std::string owner, std::string name) {{
-            ::robotkernel::kernel& k = *::robotkernel::kernel::get_instance();
+         */''')
+
+    if args.create_hdr_src_pair:
+        lines.append(f'''        void add_svc_{sd_name}(std::string owner, std::string name);
+
+        //! remove service from robotkernel service store
+        void remove_svc_{sd_name}(void);''')
+    else:
+        lines.append(f'''        void add_svc_{sd_name}(std::string owner, std::string name) {{
             local_owner = owner;
             local_name = name;
 
-            k.add_service(owner, name, 
+            ::robotkernel::kernel_base::add_service(owner, name, 
                 {sd_name}_service_definition, 
                 std::bind(&svc_base_{sd_name}::svc_handler_{sd_name}, 
                 this, std::placeholders::_1, std::placeholders::_2));
         }}
-        
+
         //! remove service from robotkernel service store
         void remove_svc_{sd_name}(void) {{
-            ::robotkernel::kernel& k = *::robotkernel::kernel::get_instance();
-            k.remove_service(local_owner, local_name);
-        }}
+            ::robotkernel::kernel_base::remove_service(local_owner, local_name);
+        }}''')
+    lines.append(
+        f'''
 }};
 
 {create_namespace_closes(parts)}
