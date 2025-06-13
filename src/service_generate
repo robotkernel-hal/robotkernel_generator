@@ -58,7 +58,7 @@ def create_header(fd, name):
 '''
     fd.write(hdr)
     if not args.create_hdr_src_pair:
-        fd.write(f'''#include "robotkernel/kernel_base.h"
+        fd.write(f'''#include "robotkernel/robotkernel.h"
 ''')
 
     hdr = f'''#ifndef {name.upper()}_SERVICE_DEFINITIONS__H
@@ -258,7 +258,7 @@ class svc_base_{sd_name} {{
             local_owner = owner;
             local_name = name;
 
-            ::robotkernel::kernel_base::add_service(owner, name, 
+            ::robotkernel::add_service(owner, name, 
                 {sd_name}_service_definition, 
                 std::bind(&svc_base_{sd_name}::svc_handler_{sd_name}, 
                 this, std::placeholders::_1, std::placeholders::_2));
@@ -266,7 +266,7 @@ class svc_base_{sd_name} {{
 
         //! remove service from robotkernel service store
         void remove_svc_{sd_name}(void) {{
-            ::robotkernel::kernel_base::remove_service(local_owner, local_name);
+            ::robotkernel::remove_service(local_owner, local_name);
         }}''')
     lines.append(
         f'''
