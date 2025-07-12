@@ -19,7 +19,7 @@ jobs:
         run: apt-get update && apt-get install -y build-essential autoconf automake libtool git
 
       - name: update branch name
-        run: sed "s/BRANCH_VERSION/${{ github.ref_name }}/" configure.ac.in > configure.ac
+        run: sed "s/BRANCH_VERSION/\"${{ github.ref_name }}\"/" configure.ac.in > configure.ac
         
       - name: autoreconf
         run: autoreconf -i -f
