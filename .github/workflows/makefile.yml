@@ -8,15 +8,18 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro: [ bookworm, bullseye ]
     container:
-      image: debian:bookworm
+      image: debian:${{ matrix.distro }}
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
         run: apt-get update && apt-get install -y build-essential autoconf automake libtool
 
       - name: autoreconf
-        run: ./configure
+        run: autoreconf -i -f
       
       - name: configure
         run: ./configure
