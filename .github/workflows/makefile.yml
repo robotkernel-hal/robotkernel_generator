@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: apt-get update && apt-get install -y build-essential autoconf automake libtool
+        run: apt-get update && apt-get install -y build-essential autoconf automake libtool git
 
       - name: autoreconf
         run: autoreconf -i -f
