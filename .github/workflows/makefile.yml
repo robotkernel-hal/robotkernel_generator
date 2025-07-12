@@ -1,0 +1,39 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "release/6.0.0" ]
+  pull_request:
+    branches: [ "release/6.0.0" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    container:
+      image: debian:bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: apt-get update && apt-get install -y build-essential autoconf automake libtool
+
+      - name: autoreconf
+        run: ./configure
+      
+      - name: configure
+        run: ./configure
+
+      - name: Install dependencies
+        run: make
+
+      - name: Run check
+        run: make check
+
+      - name: Run distcheck
+        run: make distcheck
+
+      - name: Upload source tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: autotools-dist
+          path: ./*.tar.gz
