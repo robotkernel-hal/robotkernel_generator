@@ -39,13 +39,9 @@ jobs:
 
       - name: Run distcheck
         run: make distcheck
-      
-      - name: Clean up tarballs after distcheck
-        if: always()
-        run: rm -f ./*.tar.gz
 
       - name: Upload source tarball
         uses: actions/upload-artifact@v4
         with:
-          name: autotools-dist
+          name: autotools-dist-${{ github.run_number }}-${{ matrix.os }}
           path: ./*.tar.gz
