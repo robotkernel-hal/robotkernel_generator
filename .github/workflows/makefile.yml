@@ -28,7 +28,7 @@ jobs:
           if [[ "${{ matrix.image }}" == debian* ]]; then
             apt-get update && apt-get install -y tar
           elif [[ "${{ matrix.image }}" == opensuse* ]]; then
-            zypper refresh && zypper install -y tar
+            zypper refresh && zypper install -y tar gzip
           fi
         shell: bash
         
