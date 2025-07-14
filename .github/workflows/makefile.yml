@@ -25,7 +25,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
-        run: apt-get update && apt-get install -y build-essential autoconf automake libtool git
+        run: |
+          if [[ "${{ matrix.image }}" == debian* ]]; then
+            apt-get update && apt-get install -y build-essential autoconf automake libtool git
+          elif [[ "${{ matrix.image }}" == opensuse* ]]; then
+            zypper refresh && zypper install -y -t pattern devel_basis && zypper install -y autoconf automake libtool git
+          else
+            echo "Unknown image type: ${{ matrix.image }}"
+            exit 1
+          fi
+        shell: bash
 
       - name: update branch name
         run: |
