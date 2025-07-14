@@ -66,9 +66,15 @@ jobs:
 
       - name: Run distcheck
         run: make distcheck
-
+      
+      - name: Set sanitized image name
+        id: sanitize
+        run: echo "sanitized_image=${IMAGE//:/-}" >> $GITHUB_OUTPUT
+        env:
+          IMAGE: ${{ matrix.image }}
+      
       - name: Upload source tarball
         uses: actions/upload-artifact@v4
         with:
-          name: autotools-dist-${{ github.run_number }}-${{ matrix.image // ':' / '-' }}
+          name: autotools-dist-${{ github.run_number }}-${{ steps.sanitize.outputs.sanitized_image }}
           path: ./*.tar.gz
