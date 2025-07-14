@@ -22,7 +22,9 @@ jobs:
         run: |
           safe_branch="${GITHUB_REF_NAME//\//-}"
           sed "s|BRANCH_VERSION|$safe_branch|" configure.ac.in > configure.ac
-        
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          
       - name: autoreconf
         run: autoreconf -i -f
       
