@@ -10,9 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        distro: [ bookworm, bullseye ]
+        distro: [bookworm, bullseye]
+        include:
+          - distro: bookworm
+            image: debian:bookworm
+          - distro: bullseye
+            image: debian:bullseye
+          - distro: opensuse-leap
+            image: opensuse/leap:15.5
+          - distro: opensuse-tumbleweed
+            image: opensuse/tumbleweed
     container:
-      image: debian:${{ matrix.distro }}
+      image: ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
       - name: Install build dependencies
@@ -43,5 +52,5 @@ jobs:
       - name: Upload source tarball
         uses: actions/upload-artifact@v4
         with:
-          name: autotools-dist-${{ github.run_number }}-${{ matrix.distro }}
+          name: autotools-dist-${{ github.run_number }}-${{ matrix.image }}
           path: ./*.tar.gz
