@@ -69,7 +69,7 @@ jobs:
       
       - name: Set sanitized image name
         id: sanitize
-        run: echo "sanitized_image=$(echo "$IMAGE" | tr ':' '-')" >> $GITHUB_OUTPUT
+        run: echo "sanitized_image=$(echo "$IMAGE" | tr '/:' '--')" >> $GITHUB_OUTPUT
         env:
           IMAGE: ${{ matrix.image }}
       
