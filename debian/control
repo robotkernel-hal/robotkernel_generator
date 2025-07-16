@@ -2,7 +2,7 @@ Source: robotkernel-service-helper
 Section: unknown
 Priority: optional
 Maintainer: Robert Burger <robert.burger@dlr.de>
-Build-Depends: debhelper-compat (= 13), python3-yaml (>= 5)
+Build-Depends: debhelper-compat (= 13)
 Standards-Version: 4.5.1
 Homepage: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper
 Vcs-Browser: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper
