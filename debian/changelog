@@ -1,5 +1,61 @@
-robotkernel-service-helper (5.0.0-1) unstable; urgency=medium
+robotkernel_service_helper (6.0.0~pre1) unstable; urgency=low
 
-  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
 
- -- Robert Burger <robert.burger@dlr.de>  Wed, 31 May 2023 09:40:56 +0200
+ -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100
+
+robotkernel_service_helper (0.0.6) unstable; urgency=low
+
+  * add: autotools build
+
+ -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100
+
+robotkernel_service_helper (0.0.5) unstable; urgency=low
+
+  * Merge pull request #2 from robotkernel/feat/conan2
+  * chore. black format
+  * fix: conan2 build
+
+ -- Mühlbauer, Maximilian Sebastian <Maximilian.Muehlbauer@dlr.de>  Tue, 30 Jan 2024 15:03:20 +0100
+
+robotkernel_service_helper (0.0.4) unstable; urgency=low
+
+  * added additional/optional namespace
+
+ -- Robert Burger <robert.burger@dlr.de>  Fri, 4 Aug 2023 11:09:52 +0200
+
+robotkernel_service_helper (0.0.3) unstable; urgency=low
+
+  * changed builds to linux defaults
+  * fixed indent
+  * fixing issue with string typecast
+  * fixed explicit conversion
+  * Merge branch 'master' into release/0.0.3
+  * fixed service base class generation
+  * fixed yaml.FullLoader
+  * fixed not supplying name
+  * fixed: typo in string
+  * fix: real entry in decoding vector
+  * fix: real entry in decoding vector
+  * add: include of vector
+  * add: name to set c-header-define
+  * change: added namespace instead of very long names
+  * service helper class generation added
+
+ -- Robert Burger <robert.burger@dlr.de>  Thu, 3 Aug 2023 06:08:34 +0200
+
+robotkernel_service_helper (0.0.2) unstable; urgency=low
+
+  * Merge pull request #1 from robotkernel/fix/yaml_loader
+  * fix: yaml needs a loader
+  * updated description
+  * added debian build dir
+
+ -- Mühlbauer, Maximilian Sebastian <Maximilian.Muehlbauer@dlr.de>  Fri, 28 Jul 2023 17:32:44 +0200
+
+robotkernel_service_helper (0.0.1) unstable; urgency=low
+
+  * FIX: generation of service def header
+  * ADD: initial commit
+
+ -- Robert Burger <robert.burger@dlr.de>  Fri, 28 Jan 2022 09:29:34 +0100
+
