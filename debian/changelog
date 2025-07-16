@@ -1,5 +1,6 @@
 robotkernel_service_helper (6.0.0~pre1) unstable; urgency=low
 
+  * prepare: deb package release
 
  -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100
 
