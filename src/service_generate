@@ -102,6 +102,9 @@ def decode_datatype(datatype):
     if datatype == "string":
         return "std::string"
 
+    if datatype.startswith('vector'):
+        return "std::vector<" + datatype[7:] + ">"
+
     return datatype
 
 global_defs = {}
@@ -188,14 +191,7 @@ class svc_base_{sd_name} {{
         cnt = 0
         for elem in sd['request']:
             for entry in elem:
-                real_entry = entry
-                if entry.startswith('vector'):
-                    real_entry = entry[7:]
-                    lines.append(f'\t\t\tfor (const auto& value : ::robotkernel::rk_type_cast<std::vector<::robotkernel::rk_type> >(req[{cnt}])) {{')
-                    lines.append(f'\t\t\t\tlocal_req.{elem[entry]}.push_back(::robotkernel::rk_type_cast<{decode_datatype(real_entry)}>(value));')
-                    lines.append(f'\t\t\t}};')
-                else:
-                    lines.append(f'\t\t\tlocal_req.{elem[entry]} = ::robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
+                lines.append(f'\t\t\tlocal_req.{elem[entry]} = ::robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
                 cnt = cnt + 1
     lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
 
@@ -204,15 +200,7 @@ class svc_base_{sd_name} {{
         lines.append(f'\t\t\tresp.clear();')
         for elem in sd['response']:
             for entry in elem:
-                real_entry = entry
-                if entry.startswith('vector'):
-                    real_entry = entry[7:]
-                    lines.append(f'\t\t\tstd::vector<::robotkernel::rk_type> tmp_{elem[entry]};')
-                    lines.append(f'\t\t\tfor (const auto& e : local_resp.{elem[entry]}) {{')
-                    lines.append(f'\t\t\t\ttmp_{elem[entry]}.push_back(e);}}')
-                    lines.append(f'\t\t\tresp.push_back(tmp_{elem[entry]});')
-                else:
-                    lines.append(f'\t\t\tresp.push_back(local_resp.{elem[entry]});')
+                lines.append(f'\t\t\tresp.push_back(local_resp.{elem[entry]});')
                 cnt = cnt + 1
     
     lines.append(
