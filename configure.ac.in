@@ -7,7 +7,7 @@ AC_PREREQ([2.63])
 # Robotkernel Version and Maintainer are extracted from project.properties file, change
 # them there if needed
 #
-AC_INIT([robotkernel_service_helper], m4_esyscmd_s([git describe --long --dirty --tags]), [Robert Burger <robert.burger@dlr.de>])
+AC_INIT([robotkernel_service_helper], [BRANCH_VERSION], [Robert Burger <robert.burger@dlr.de>])
 
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])

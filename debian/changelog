@@ -1,15 +1,16 @@
-robotkernel_service_helper (6.0.0~pre1) unstable; urgency=low
+robotkernel-service-helper (6.0.0~pre1) unstable; urgency=low
 
+  * prepare: deb package release
 
  -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100
 
-robotkernel_service_helper (0.0.6) unstable; urgency=low
+robotkernel-service-helper (0.0.6) unstable; urgency=low
 
   * add: autotools build
 
  -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100
 
-robotkernel_service_helper (0.0.5) unstable; urgency=low
+robotkernel-service-helper (0.0.5) unstable; urgency=low
 
   * Merge pull request #2 from robotkernel/feat/conan2
   * chore. black format
@@ -17,13 +18,13 @@ robotkernel_service_helper (0.0.5) unstable; urgency=low
 
  -- Mühlbauer, Maximilian Sebastian <Maximilian.Muehlbauer@dlr.de>  Tue, 30 Jan 2024 15:03:20 +0100
 
-robotkernel_service_helper (0.0.4) unstable; urgency=low
+robotkernel-service-helper (0.0.4) unstable; urgency=low
 
   * added additional/optional namespace
 
  -- Robert Burger <robert.burger@dlr.de>  Fri, 4 Aug 2023 11:09:52 +0200
 
-robotkernel_service_helper (0.0.3) unstable; urgency=low
+robotkernel-service-helper (0.0.3) unstable; urgency=low
 
   * changed builds to linux defaults
   * fixed indent
@@ -43,7 +44,7 @@ robotkernel_service_helper (0.0.3) unstable; urgency=low
 
  -- Robert Burger <robert.burger@dlr.de>  Thu, 3 Aug 2023 06:08:34 +0200
 
-robotkernel_service_helper (0.0.2) unstable; urgency=low
+robotkernel-service-helper (0.0.2) unstable; urgency=low
 
   * Merge pull request #1 from robotkernel/fix/yaml_loader
   * fix: yaml needs a loader
@@ -52,7 +53,7 @@ robotkernel_service_helper (0.0.2) unstable; urgency=low
 
  -- Mühlbauer, Maximilian Sebastian <Maximilian.Muehlbauer@dlr.de>  Fri, 28 Jul 2023 17:32:44 +0200
 
-robotkernel_service_helper (0.0.1) unstable; urgency=low
+robotkernel-service-helper (0.0.1) unstable; urgency=low
 
   * FIX: generation of service def header
   * ADD: initial commit

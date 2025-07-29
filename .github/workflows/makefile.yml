@@ -1,0 +1,80 @@
+name: Makefile CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        distro: [bookworm, bullseye]
+        include:
+          - distro: bookworm
+            image: debian:bookworm
+          - distro: bullseye
+            image: debian:bullseye
+          - distro: opensuse-leap
+            image: opensuse/leap:15.5
+          - distro: opensuse-tumbleweed
+            image: opensuse/tumbleweed
+    container:
+      image: ${{ matrix.image }}
+    steps:  
+      - name: Install tar early
+        run: |
+          if [[ "${{ matrix.image }}" == debian* ]]; then
+            apt-get update && apt-get install -y tar
+          elif [[ "${{ matrix.image }}" == opensuse* ]]; then
+            zypper refresh && zypper install -y tar gzip
+          fi
+        shell: bash
+        
+      - uses: actions/checkout@v4
+      - name: Install build dependencies
+        run: |
+          if [[ "${{ matrix.image }}" == debian* ]]; then
+            apt-get update && apt-get install -y build-essential autoconf automake libtool git
+          elif [[ "${{ matrix.image }}" == opensuse* ]]; then
+            zypper refresh && zypper install -y -t pattern devel_basis && zypper install -y autoconf automake libtool git
+          else
+            echo "Unknown image type: ${{ matrix.image }}"
+            exit 1
+          fi
+        shell: bash
+
+      - name: update branch name
+        run: |
+          safe_branch=$(echo "${GITHUB_REF_NAME}" | tr '/' '-')
+          sed "s|BRANCH_VERSION|$safe_branch|" configure.ac.in > configure.ac
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          
+      - name: autoreconf
+        run: autoreconf -i -f
+      
+      - name: configure
+        run: ./configure
+
+      - name: Install dependencies
+        run: make
+
+      - name: Run check
+        run: make check
+
+      - name: Run distcheck
+        run: make distcheck
+      
+      - name: Set sanitized image name
+        id: sanitize
+        run: echo "sanitized_image=$(echo "$IMAGE" | tr '/:' '--')" >> $GITHUB_OUTPUT
+        env:
+          IMAGE: ${{ matrix.image }}
+      
+      - name: Upload source tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: autotools-dist-${{ github.run_number }}-${{ steps.sanitize.outputs.sanitized_image }}
+          path: ./*.tar.gz
