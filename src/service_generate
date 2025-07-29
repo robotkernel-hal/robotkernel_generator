@@ -103,7 +103,7 @@ def decode_datatype(datatype):
         return "std::string"
 
     if datatype.startswith('vector'):
-        return "std::vector<" + datatype[7:] + ">"
+        return "std::vector<" + decode_datatype(datatype[7:]) + ">"
 
     return datatype
 
