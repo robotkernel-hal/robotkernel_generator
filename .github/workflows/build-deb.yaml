@@ -85,7 +85,7 @@ jobs:
           fi
 
           dpkg-buildpackage -us -uc -S
-          dpkg-buildpackage -us -uc -d
+          dpkg-buildpackage -us -uc -d -b
 
       - name: Debug artifact files 1
         run: |
