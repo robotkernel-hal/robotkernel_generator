@@ -105,9 +105,9 @@ jobs:
           
           curl -X POST https://deb.burger-system.de/upload \
             -H "Authorization: Bearer $DEPLOY_TOKEN" \
-            -F "deb=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}"_amd64.deb" \
-            -F "changes=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}"_amd64.changes" \
-            -F "dsc=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}".dsc"
+            -F "deb=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}_amd64.deb" \
+            -F "changes=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}_amd64.changes" \
+            -F "dsc=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}.dsc"
           
       - name: Collect .deb artifact
         run: |
