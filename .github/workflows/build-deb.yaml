@@ -107,7 +107,9 @@ jobs:
             -H "Authorization: Bearer $DEPLOY_TOKEN" \
             -F "deb=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}_amd64.deb" \
             -F "changes=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}_amd64.changes" \
-            -F "dsc=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}.dsc"
+            -F "buildinfo=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}_amd64.buildinfo" \
+            -F "dsc=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}.dsc" \
+            -F "source=@../robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}.tar.gz"
           
       - name: Collect .deb artifact
         run: |
