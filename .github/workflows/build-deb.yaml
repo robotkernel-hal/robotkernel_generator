@@ -145,7 +145,7 @@ jobs:
           
           curl -X POST https://deb.burger-system.de/upload \
             -H "Authorization: Bearer $DEPLOY_TOKEN" \
-            -F "deb=@../${FILENAME}"
+            -F "deb=@${FILENAME}"
           #  -F "changes=@../yourpackage.changes" \
           #  -F "dsc=@../yourpackage.dsc"
           
