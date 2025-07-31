@@ -136,9 +136,21 @@ jobs:
             -H "Content-Type: application/vnd.debian.binary-package" \
             --data-binary @"$FILE_PATH" \
             "$UPLOAD_URL?name=$FILE_NAME"          
-
+            
+      - name: Upload to APT repository
+        env:
+          DEPLOY_TOKEN: ${{ secrets.BS_UPLOAD_KEY }}
+        run: |
+          FILENAME="artifacts/${{ matrix.os }}/${{ matrix.version }}/robotkernel-service-helper_${{ steps.sanitize.outputs.sanitized_image }}.deb"
+          
+          curl -X POST https://deb.burger-system.de/upload \
+            -H "Authorization: Bearer $DEPLOY_TOKEN" \
+            -F "deb=@../${FILENAME}"
+          #  -F "changes=@../yourpackage.changes" \
+          #  -F "dsc=@../yourpackage.dsc"
+          
       - name: Upload to Cloudsmith (${{ matrix.os }}/${{ matrix.version }})
-        #if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
         shell: bash
