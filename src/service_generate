@@ -27,7 +27,9 @@ parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
                     help='yaml service definition files')
 parser.add_argument('--name', type=str, help='base service definition name')
 parser.add_argument('--add_namespace', type=str, help='additional base namespace')
-parser.add_argument('--create-hdr-src-pair', action=argparse.BooleanOptionalAction)
+parser.add_argument('--create-hdr-src-pair', dest='create_hdr_src_pair', action='store_true', help='Enable the feature')
+parser.add_argument('--no-create-hdr-src-pair', dest='create_hdr_src_pair', action='store_false', help='Disable the feature')
+parser.set_defaults(create_hdr_src_pair=False)
 
 args = parser.parse_args()
 
