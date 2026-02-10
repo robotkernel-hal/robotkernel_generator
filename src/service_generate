@@ -175,6 +175,7 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
                     tmp.append(f'{indent}{decode_datatype_new(elem, with_name=True)};')
                 else:
                     for entry in elem: # loop over map entries (old format)
+                        print('  ', entry)
                         if entry.startswith('vector'):
                             real_entry = entry[7:]
                             tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
@@ -183,17 +184,14 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
         return '\n'.join(tmp)
 
     def create_types(sd):
+        tmp = []
         if "types" in sd:
             for t in sd["types"]:
-                print (t)
-                if t["type"] == "enum":
-                    lines.append(f'enum {t["name"]} = {{')
+                tmp.append(f'typedef struct {{')
+                tmp.append(create_entries('fields', t, '    '))
+                tmp.append(f'}} {t["name"]};')
 
-                    for v in t["values"]:
-                        lines.append(f'    {v},')
-
-        pass
-
+        return '\n'.join(tmp)
 
     lines.append(
         f'''
@@ -204,6 +202,9 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
 //! service definition for {sd_name}
 static const std::string {sd_name}_service_definition =
 {create_def(sd)};
+
+//! service types for {sd_name}
+{create_types(sd)}
 
 //! service request data structure for {sd_name}
 struct svc_req_{sd_name} {{
