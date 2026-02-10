@@ -101,10 +101,30 @@ def is_primitive(datatype):
 
     return True
 
-def decode_datatype_new(elem, with_name=False):
+builtin_dtypes = [ 
+    'uint8_t',
+    'uint16_t',
+    'uint32_t',
+    'uint64_t',
+    'int8_t',
+    'int16_t',
+    'int32_t',
+    'int64_t',
+    'float',
+    'double',
+    'string' ]
+
+def is_builtin(dtype):
+    return dtype in builtin_dtypes
+
+
+def decode_datatype_new(elem, sd_name, with_name=False):
     dtype = elem["type"]
     is_array = elem["array"] if "array" in elem else False
     size = elem["size"] if "size" in elem else -1
+
+    if not is_builtin(dtype):
+        dtype = f'svc_type_{sd_name}_{dtype}'
 
     if dtype == "string": 
         dtype = "std::string"
@@ -138,9 +158,68 @@ def decode_default(datatype, default):
 
 global_defs = {}
 
+def create_datatypes(sd, fd, fn_name, sd_name, index=""):
+    lines = []
+
+    parts = fn_name.split('/')
+    sd_name = parts[-1]
+    global_defs[fn_name] = parts
+
+    def create_namespace_opens(parts):
+        tmp = []
+        for d in parts[:-1]:
+            tmp.append(f'namespace {d} {{')
+        return '\n'.join(tmp)
+
+    def create_namespace_closes(parts):
+        tmp = []
+        for d in parts[:-1]:
+            tmp.append(f'}} // namespace {d}')
+        return '\n'.join(tmp)
+
+    def create_entries(etype, sd, indent):
+        tmp = []
+        if etype in sd:
+            for elem in sd[etype]: # loop over YAML Seqence
+                if type(elem) == dict and "name" in elem: # new format
+                    tmp.append(f'{indent}{decode_datatype_new(elem, sd_name, with_name=True)};')
+                else:
+                    for entry in elem: # loop over map entries (old format)
+                        print('  ', entry)
+                        if entry.startswith('vector'):
+                            real_entry = entry[7:]
+                            tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
+                        else:
+                            tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
+        return '\n'.join(tmp)
+
+    def create_types(sd):
+        tmp = []
+        if "types" in sd:
+            for t in sd["types"]:
+                tmp.append(f'typedef struct {{')
+                tmp.append(create_entries('fields', t, '    '))
+                tmp.append(f'}} svc_type_{sd_name}_{t["name"]};')
+
+        return '\n'.join(tmp)
+
+    lines.append(
+        f'''
+//=== SERVICE CODE GENERATED FOR {fn_name} ===
+
+{create_namespace_opens(parts)}
+
+//! service types for {sd_name}
+{create_types(sd)}
+
+{create_namespace_closes(parts)}
+''')
+    outsd = '\n'.join(lines)
+    fd.write(f'{outsd}')
+
 def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     lines = []
- 
+
     parts = fn_name.split('/')
     sd_name = parts[-1]
 
@@ -172,7 +251,7 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
         if etype in sd:
             for elem in sd[etype]: # loop over YAML Seqence
                 if type(elem) == dict and "name" in elem: # new format
-                    tmp.append(f'{indent}{decode_datatype_new(elem, with_name=True)};')
+                    tmp.append(f'{indent}{decode_datatype_new(elem, sd_name, with_name=True)};')
                 else:
                     for entry in elem: # loop over map entries (old format)
                         print('  ', entry)
@@ -189,7 +268,7 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
             for t in sd["types"]:
                 tmp.append(f'typedef struct {{')
                 tmp.append(create_entries('fields', t, '    '))
-                tmp.append(f'}} {t["name"]};')
+                tmp.append(f'}} svc_type_{sd_name}_{t["name"]};')
 
         return '\n'.join(tmp)
 
@@ -199,12 +278,12 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
 
 {create_namespace_opens(parts)}
 
+//! service types for {sd_name}
+{create_types(sd)}
+
 //! service definition for {sd_name}
 static const std::string {sd_name}_service_definition =
 {create_def(sd)};
-
-//! service types for {sd_name}
-{create_types(sd)}
 
 //! service request data structure for {sd_name}
 struct svc_req_{sd_name} {{
@@ -235,9 +314,9 @@ class svc_base_{sd_name} {{
         for elem in sd['request']:
             if type(elem) == dict and "name" in elem: # new format
                 if "default" in elem:
-                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem)}>(req, \"{elem["name"]}\", {decode_default(elem["type"], elem["default"])});')
+                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem, sd_name)}>(req, \"{elem["name"]}\", {decode_default(elem["type"], elem["default"])});')
                 else:
-                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem)}>(req, \"{elem["name"]}\");')
+                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem, sd_name)}>(req, \"{elem["name"]}\");')
             else:
                 for entry in elem:
                     lines.append(f'            local_req.{elem[entry]} = ::robotkernel::helpers::get_as<{decode_datatype(entry)}>(req, \"{elem[entry]}\");')
@@ -320,6 +399,20 @@ class svc_base_{sd_name} {{
 
     outsd = '\n'.join(lines)
     fd.write(f'{outsd}')
+
+#for fn in args.sd_files:
+#    sd = None
+#    sd_name = os.path.join(args.indir, fn)
+#
+#    print("service_generate: processing %s" % (sd_name))
+#    
+#    with open(sd_name, 'r') as stream:
+#        try:
+#            sd = yaml.load(stream, Loader=yaml.FullLoader)
+#        except:
+#            sd = yaml.load(stream)
+#
+#    create_datatypes(sd, outfd, fn, fn.replace('/', '_'))
 
 for fn in args.sd_files:
     sd = None
