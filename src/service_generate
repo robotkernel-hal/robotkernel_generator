@@ -60,6 +60,7 @@ def create_header(fd, name):
     fd.write(hdr)
     if not args.create_hdr_src_pair:
         fd.write(f'''#include "robotkernel/robotkernel.h"
+#include "robotkernel/helpers.h"
 ''')
 
     hdr = f'''#ifndef {name.upper()}_SERVICE_DEFINITIONS__H
@@ -75,7 +76,7 @@ def create_footer(fd, name):
 #endif /* {name.upper()}_SERVICE_DEFINITIONS__H */
 
 '''
-    
+
     fd.write(ftr)
 
 prefix = args.name
@@ -100,6 +101,24 @@ def is_primitive(datatype):
 
     return True
 
+def decode_datatype_new(elem, with_name=False):
+    dtype = elem["type"]
+    is_array = elem["array"] if "array" in elem else False
+    size = elem["size"] if "size" in elem else -1
+
+    if dtype == "string": 
+        dtype = "std::string"
+
+    if is_array:
+        if size > 0:
+            dtype = f'{dtype} {elem["name"]}[{size}]' if with_name else f'{dtype}[{size}]'
+        else:
+            dtype = f'std::vector<{dtype}> {elem["name"]}' if with_name else f'std::vector<{dtype}>'
+    else:
+        dtype = f'{dtype} {elem["name"]}' if with_name else dtype
+
+    return dtype
+
 def decode_datatype(datatype):
     if datatype == "string":
         return "std::string"
@@ -109,11 +128,19 @@ def decode_datatype(datatype):
 
     return datatype
 
+def decode_default(datatype, default):
+    if datatype == "string":
+        return f"\"{default}\""
+    if datatype == "bool":
+        return "true" if default else "false"
+
+    return default
+
 global_defs = {}
 
 def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     lines = []
-    
+ 
     parts = fn_name.split('/')
     sd_name = parts[-1]
 
@@ -124,7 +151,7 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
         for d in parts[:-1]:
             tmp.append(f'namespace {d} {{')
         return '\n'.join(tmp)
-    
+
     def create_namespace_closes(parts):
         tmp = []
         for d in parts[:-1]:
@@ -143,24 +170,43 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
     def create_entries(etype, sd, indent):
         tmp = []
         if etype in sd:
-            for elem in sd[etype]:
-                for entry in elem:
-                    if entry.startswith('vector'):
-                        real_entry = entry[7:]
-                        tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
-                    else:
-                        tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
+            for elem in sd[etype]: # loop over YAML Seqence
+                if type(elem) == dict and "name" in elem: # new format
+                    tmp.append(f'{indent}{decode_datatype_new(elem, with_name=True)};')
+                else:
+                    for entry in elem: # loop over map entries (old format)
+                        if entry.startswith('vector'):
+                            real_entry = entry[7:]
+                            tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
+                        else:
+                            tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
         return '\n'.join(tmp)
+
+    def create_types(sd):
+        if "types" in sd:
+            for t in sd["types"]:
+                print (t)
+                if t["type"] == "enum":
+                    lines.append(f'enum {t["name"]} = {{')
+
+                    for v in t["values"]:
+                        lines.append(f'    {v},')
+
+        pass
+
 
     lines.append(
         f'''
 //=== SERVICE CODE GENERATED FOR {fn_name} ===
 
 {create_namespace_opens(parts)}
- 
+
 //! service definition for {sd_name}
 static const std::string {sd_name}_service_definition =
 {create_def(sd)};
+
+//! service specific data types
+{create_types(sd)}
 
 //! service request data structure for {sd_name}
 struct svc_req_{sd_name} {{
@@ -177,41 +223,51 @@ class svc_base_{sd_name} {{
     private: 
         //! internal service handler, this one is registered to robotkernel
         /*!
-         * \param[in]   req     Service request argument list of type 'any'.
-         * \param[out]  resp    Service response argument list of type 'any'.
+         * \param[in]   req     Service request yaml.
+         * \param[out]  resp    Service response yaml.
          * \\return 0
          */
-        int svc_handler_{sd_name}(
-            const ::robotkernel::service_arglist_t &req, 
-            ::robotkernel::service_arglist_t &resp) 
+        int svc_handler_{sd_name}(const YAML::Node& req, YAML::Node& resp)
         {{''')
     
-    lines.append(f'\t\t\tstruct svc_req_{sd_name} local_req;')
-    lines.append(f'\t\t\tstruct svc_resp_{sd_name} local_resp;')
+    lines.append(f'            struct svc_req_{sd_name} local_req;')
+    lines.append(f'            struct svc_resp_{sd_name} local_resp;')
 
     if 'request' in sd:
-        cnt = 0
         for elem in sd['request']:
-            for entry in elem:
-                lines.append(f'\t\t\tlocal_req.{elem[entry]} = ::robotkernel::rk_type_cast<{decode_datatype(entry)}>(req[{cnt}]);')
-                cnt = cnt + 1
-    lines.append(f'\n\t\t\tsvc_{sd_name}(local_req, local_resp);')
+            if type(elem) == dict and "name" in elem: # new format
+                if "default" in elem:
+                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem)}>(req, \"{elem["name"]}\", {decode_default(elem["type"], elem["default"])});')
+                else:
+                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem)}>(req, \"{elem["name"]}\");')
+            else:
+                for entry in elem:
+                    lines.append(f'            local_req.{elem[entry]} = ::robotkernel::helpers::get_as<{decode_datatype(entry)}>(req, \"{elem[entry]}\");')
 
     if 'response' in sd:
-        cnt = 0
-        lines.append(f'\t\t\tresp.clear();')
         for elem in sd['response']:
-            for entry in elem:
-                lines.append(f'\t\t\tresp.push_back(local_resp.{elem[entry]});')
-                cnt = cnt + 1
+            if type(elem) == dict and "name" in elem and "default" in elem: # new format
+                lines.append(f'            local_resp.{elem["name"]} = {decode_default(elem["type"], elem["default"])};')
+
+    lines.append(f'''
+            svc_{sd_name}(local_req, local_resp);
+''')
+
+    if 'response' in sd:
+        for elem in sd['response']:
+            if type(elem) == dict and "name" in elem: # new format
+                lines.append(f'            resp[\"{elem["name"]}\"] = local_resp.{elem["name"]};')
+            else:
+                for entry in elem:
+                    lines.append(f'            resp[\"{elem[entry]}\"] = local_resp.{elem[entry]};')
     
     lines.append(
         f'''
             return 0;
         }}
 
-        std::string local_owner,    //!< \brief local service owner
-                    local_name;     //!< \brief local service name
+        std::string local_owner,    //!< \\brief local service owner
+                    local_name;     //!< \\brief local service name
 
     public:
         //! destruction, unregisters service
