@@ -205,9 +205,6 @@ def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
 static const std::string {sd_name}_service_definition =
 {create_def(sd)};
 
-//! service specific data types
-{create_types(sd)}
-
 //! service request data structure for {sd_name}
 struct svc_req_{sd_name} {{
 {create_entries('request', sd, '    ')}
