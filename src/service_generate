@@ -35,10 +35,242 @@ args = parser.parse_args()
 
 print('service_generate: writing output to %s' % args.out)
 
-outfd = open(args.out, 'w+')
-
 import random
 import string
+
+from string import Template
+
+types = {}
+bases = {}
+
+builtin_dtypes = [ 
+    'bool',
+    'uint8_t',
+    'uint16_t',
+    'uint32_t',
+    'uint64_t',
+    'int8_t',
+    'int16_t',
+    'int32_t',
+    'int64_t',
+    'float',
+    'double',
+    'string' ]
+
+def is_builtin(dtype):
+    return dtype in builtin_dtypes
+
+def decode_name(inname):
+    name = inname
+    namespaces = []
+    if '/' in inname:
+        parts = inname.split('/')
+        name = parts[-1]
+        namespaces = parts[:-1]
+
+    return (name, namespaces)
+
+def yaml_to_cpp_string(data, indent="    "):
+    tmp = []
+    inputlines = yaml.dump(data).split('\n')
+    for line in inputlines:
+        if line != "":
+            line = line.replace('\\', '\\\\').replace('"', '\\"')
+            tmp.append(f'{indent}"{line}\\n"')
+    return '\n'.join(tmp)
+
+class entry():
+    def __init__(self, node):
+        self.name = node["name"]
+        self.type = node["type"]
+        self.array = node["array"] if "array" in node else False
+        self.size = ndoe["size"] if "size" in node else -1
+        self.default = node["default"] if "default" in node else None
+
+class dtype():
+    def __init__(self, node):
+        self.name = node["name"]
+        self.real_name, self.namespaces = decode_name(self.name)
+        self.fields = [ entry(e) for e in node["fields"] ]
+        self.node = node
+
+    def create_struct(self):
+        fields = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.fields)
+        namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
+        namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
+
+        return f'''
+{namespaces_open}
+
+//! datatype definition for {self.real_name}
+static const std::string {self.real_name}_datatype_definition =
+{yaml_to_cpp_string(self.node)};
+
+//! data type structure for {self.real_name}
+typedef struct {{
+{fields}
+}} {self.real_name};
+
+{namespaces_close}
+'''
+
+    def create_yaml_coverters(self):
+        encode     = "\n".join(f'            node["{f.name}"] = rhs.{f.name};' for f in self.fields)
+        decode     = "\n".join(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype_new(f, self.name)}>();' for f in self.fields)
+        validation = "\n".join(f'            if (!node["{f.name}"]) {{ return false; }}' for f in self.fields)
+        typename   = "::".join(self.namespaces + [self.real_name])
+
+        return f'''
+// Definiere die Konvertierung für Test
+namespace YAML {{
+    template<>
+    struct convert<{typename}> {{
+        static Node encode(const {typename}& rhs) {{
+            Node node;
+{encode}
+            return node;
+        }}
+
+        static bool decode(const Node& node, {typename}& rhs) {{
+{validation}
+{decode}
+            return true;
+        }}
+    }};
+}}
+'''
+
+class svc_base():
+    def __init__(self, node):
+        self.node = node
+        self.name, self.namespaces = decode_name(node["name"])
+        self.request = [ entry(e) for e in node["request"] ] if "request" in node else []
+        self.response = [ entry(e) for e in node["response"] ] if "response" in node else []
+
+    def create_class(self):
+        request_entries = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.request)
+        response_entries = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.response)
+        namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
+        namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
+        init_request = []
+        init_response = []
+        parse_response = []
+
+        for e in self.request:
+            if e.default is not None:
+                init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                    f'<{decode_datatype_new(e, e.name)}>(req, "{e.name}",'
+                                    f'{decode_default(e.type, e.default)});')
+            else:
+                init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                    f'<{decode_datatype_new(e, e.name)}>(req, \"{e.name}\");')
+
+        for e in self.response:
+            if e.default is not None:
+                init_response.append(f'            local_resp.{e.name} = {decode_default(e.type, e.default)};')
+
+        for e in self.response:
+            parse_response.append(f'            resp[\"{e.name}\"] = local_resp.{e.name};')
+
+        init_response = "\n".join(init_response)
+        init_request = "\n".join(init_request)
+        parse_response = "\n".join(parse_response)
+        add_datatypes = []
+
+        for e in self.request + self.response:
+            if not is_builtin(e.type):
+                t = types[e.type]
+                add_datatypes.append(f'            ::robotkernel::add_datatype_desc(\n'
+                                     f'                "{t.name}",\n'
+                                     f'                {"::".join(t.namespaces + [t.real_name])}_datatype_definition);')
+        add_datatypes = "\n".join(add_datatypes)
+
+        return f'''
+{namespaces_open}
+
+//! service definition for {self.name}
+static const std::string {self.name}_service_definition = 
+{yaml_to_cpp_string(self.node)};
+
+//! service request data structure for {self.name}
+struct svc_req_{self.name} {{
+{request_entries}
+}};
+
+//! service response data structure for {self.name}
+struct svc_resp_{self.name} {{
+{response_entries}
+}};
+
+//! base service class for {self.name}
+class svc_base_{self.name} {{
+    private:
+        //! internal service handler, this one is registered to robotkernel
+        /*!
+         * @param[in]   req     Service request yaml.
+         * @param[out]  resp    Service response yaml.
+         * @return 0
+         */
+        int svc_handler_{self.name}(const YAML::Node& req, YAML::Node& resp) {{
+            struct svc_req_{self.name} local_req;
+            struct svc_resp_{self.name} local_resp;
+
+{init_request}
+{init_response}
+
+            svc_{self.name}(local_req, local_resp);
+
+{parse_response}
+
+            return 0;
+        }}
+
+        std::string local_owner,    //!< @brief local service owner
+                    local_name;     //!< @brief local service name
+
+    public:
+        //! destruction, unregisters service
+        virtual ~svc_base_{self.name}() {{
+            try {{
+                remove_svc_{self.name}();
+            }} catch (const std::exception& e) {{
+            }}
+        }};
+
+        //! svc_{self.name}
+        /*!
+         * @param[in]   req     Service request data.
+         * @param[out]  resp    Service response data.
+         */
+        virtual void svc_{self.name}(
+            const struct svc_req_{self.name}& req,
+            struct svc_resp_{self.name}& resp) = 0;
+
+        //! adding service to robotkernel service store
+        /*!
+         * @param[in]   owner   Owner of this service.
+         * @param[in]   name    Unique name in 'owner' namespace.
+         */
+        void add_svc_{self.name}(std::string owner, std::string name) {{
+            local_owner = owner;
+            local_name = name;
+
+{add_datatypes}
+
+            ::robotkernel::add_service(owner, name,
+                {self.name}_service_definition,
+                std::bind(&svc_base_{self.name}::svc_handler_{self.name},
+                this, std::placeholders::_1, std::placeholders::_2));
+        }}
+
+        //! remove service from robotkernel service store
+        void remove_svc_{self.name}(void) {{
+            ::robotkernel::remove_service(local_owner, local_name);
+        }}
+}};
+
+{namespaces_close}
+'''
 
 def get_random_string(length):
     # choose from all uppercase letter
@@ -79,63 +311,31 @@ def create_footer(fd, name):
 
     fd.write(ftr)
 
-prefix = args.name
-if prefix is None:
-    prefix = get_random_string(32)
-
-create_header(outfd, prefix)
-
-add_namespace = args.add_namespace
-if add_namespace is not None:
-    outfd.write(f'namespace {add_namespace} {{\n') 
-
-def service_datatype_to_ln(datatype):
-    if datatype == "string":
-        return "char*"
-
-    return datatype        
-
 def is_primitive(datatype):
     if datatype == "string":
         return False
 
     return True
 
-builtin_dtypes = [ 
-    'uint8_t',
-    'uint16_t',
-    'uint32_t',
-    'uint64_t',
-    'int8_t',
-    'int16_t',
-    'int32_t',
-    'int64_t',
-    'float',
-    'double',
-    'string' ]
-
-def is_builtin(dtype):
-    return dtype in builtin_dtypes
 
 
 def decode_datatype_new(elem, sd_name, with_name=False):
-    dtype = elem["type"]
-    is_array = elem["array"] if "array" in elem else False
-    size = elem["size"] if "size" in elem else -1
+    dtype = elem.type
 
     if not is_builtin(dtype):
-        dtype = f'svc_type_{sd_name}_{dtype}'
+        real_dtype = types[dtype]
+        dtype = "::".join(real_dtype.namespaces + [real_dtype.real_name])
 
-    if dtype == "string": 
+    if dtype == "string":
         dtype = "std::string"
 
-    if is_array:
-        if size > 0:
-            dtype = f'{dtype} {elem["name"]}[{size}]' if with_name else f'{dtype}[{size}]'
+    if elem.array:
+        if elem.size > 0:
+            dtype = f'{dtype} {elem.name}[{elem.size}]' if with_name else f'{dtype}[{elem.size}]'
         else:
-            dtype = f'std::vector<{dtype}> {elem["name"]}' if with_name else f'std::vector<{dtype}>'
+            dtype = f'std::vector<{dtype}> {elem.name}' if with_name else f'std::vector<{dtype}>'
     else:
-        dtype = f'{dtype} {elem["name"]}' if with_name else dtype
+        dtype = f'{dtype} {elem.name}' if with_name else dtype
 
     return dtype
 
@@ -156,288 +356,50 @@ def decode_default(datatype, default):
 
     return default
 
-global_defs = {}
-
-def create_datatypes(sd, fd, fn_name, sd_name, index=""):
-    lines = []
-
-    parts = fn_name.split('/')
-    sd_name = parts[-1]
-    global_defs[fn_name] = parts
-
-    def create_namespace_opens(parts):
-        tmp = []
-        for d in parts[:-1]:
-            tmp.append(f'namespace {d} {{')
-        return '\n'.join(tmp)
-
-    def create_namespace_closes(parts):
-        tmp = []
-        for d in parts[:-1]:
-            tmp.append(f'}} // namespace {d}')
-        return '\n'.join(tmp)
-
-    def create_entries(etype, sd, indent):
-        tmp = []
-        if etype in sd:
-            for elem in sd[etype]: # loop over YAML Seqence
-                if type(elem) == dict and "name" in elem: # new format
-                    tmp.append(f'{indent}{decode_datatype_new(elem, sd_name, with_name=True)};')
-                else:
-                    for entry in elem: # loop over map entries (old format)
-                        print('  ', entry)
-                        if entry.startswith('vector'):
-                            real_entry = entry[7:]
-                            tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
-                        else:
-                            tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
-        return '\n'.join(tmp)
-
-    def create_types(sd):
-        tmp = []
-        if "types" in sd:
-            for t in sd["types"]:
-                tmp.append(f'typedef struct {{')
-                tmp.append(create_entries('fields', t, '    '))
-                tmp.append(f'}} svc_type_{sd_name}_{t["name"]};')
-
-        return '\n'.join(tmp)
-
-    lines.append(
-        f'''
-//=== SERVICE CODE GENERATED FOR {fn_name} ===
-
-{create_namespace_opens(parts)}
-
-//! service types for {sd_name}
-{create_types(sd)}
-
-{create_namespace_closes(parts)}
-''')
-    outsd = '\n'.join(lines)
-    fd.write(f'{outsd}')
-
-def create_sd_string(sd, fd, fn_name, sd_name, indent=""):
-    lines = []
-
-    parts = fn_name.split('/')
-    sd_name = parts[-1]
-
-    global_defs[fn_name] = parts
-
-    def create_namespace_opens(parts):
-        tmp = []
-        for d in parts[:-1]:
-            tmp.append(f'namespace {d} {{')
-        return '\n'.join(tmp)
-
-    def create_namespace_closes(parts):
-        tmp = []
-        for d in parts[:-1]:
-            tmp.append(f'}} // namespace {d}')
-        return '\n'.join(tmp)
-
-    def create_def(sd):
-        tmp = []
-        inputlines = yaml.dump(sd).split('\n')
-        for line in inputlines:
-            if line != "":
-                line = line.replace('\\', '\\\\').replace('"', '\\"')
-                tmp.append(f'{indent}"{line}\\n"')
-        return '\n'.join(tmp)
-
-    def create_entries(etype, sd, indent):
-        tmp = []
-        if etype in sd:
-            for elem in sd[etype]: # loop over YAML Seqence
-                if type(elem) == dict and "name" in elem: # new format
-                    tmp.append(f'{indent}{decode_datatype_new(elem, sd_name, with_name=True)};')
-                else:
-                    for entry in elem: # loop over map entries (old format)
-                        print('  ', entry)
-                        if entry.startswith('vector'):
-                            real_entry = entry[7:]
-                            tmp.append(f'{indent}std::vector<{decode_datatype(real_entry)}> {elem[entry]};')
-                        else:
-                            tmp.append(f'{indent}{decode_datatype(entry)} {elem[entry]};')
-        return '\n'.join(tmp)
-
-    def create_types(sd):
-        tmp = []
-        if "types" in sd:
-            for t in sd["types"]:
-                tmp.append(f'typedef struct {{')
-                tmp.append(create_entries('fields', t, '    '))
-                tmp.append(f'}} svc_type_{sd_name}_{t["name"]};')
-
-        return '\n'.join(tmp)
-
-    lines.append(
-        f'''
-//=== SERVICE CODE GENERATED FOR {fn_name} ===
-
-{create_namespace_opens(parts)}
-
-//! service types for {sd_name}
-{create_types(sd)}
-
-//! service definition for {sd_name}
-static const std::string {sd_name}_service_definition =
-{create_def(sd)};
-
-//! service request data structure for {sd_name}
-struct svc_req_{sd_name} {{
-{create_entries('request', sd, '    ')}
-}};
-
-//! service response data structure for {sd_name}
-struct svc_resp_{sd_name} {{
-{create_entries('response', sd, '    ')}
-}};
-
-//! base service class for {sd_name}
-class svc_base_{sd_name} {{
-    private: 
-        //! internal service handler, this one is registered to robotkernel
-        /*!
-         * \param[in]   req     Service request yaml.
-         * \param[out]  resp    Service response yaml.
-         * \\return 0
-         */
-        int svc_handler_{sd_name}(const YAML::Node& req, YAML::Node& resp)
-        {{''')
-    
-    lines.append(f'            struct svc_req_{sd_name} local_req;')
-    lines.append(f'            struct svc_resp_{sd_name} local_resp;')
-
-    if 'request' in sd:
-        for elem in sd['request']:
-            if type(elem) == dict and "name" in elem: # new format
-                if "default" in elem:
-                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem, sd_name)}>(req, \"{elem["name"]}\", {decode_default(elem["type"], elem["default"])});')
-                else:
-                    lines.append(f'            local_req.{elem["name"]} = ::robotkernel::helpers::get_as<{decode_datatype_new(elem, sd_name)}>(req, \"{elem["name"]}\");')
-            else:
-                for entry in elem:
-                    lines.append(f'            local_req.{elem[entry]} = ::robotkernel::helpers::get_as<{decode_datatype(entry)}>(req, \"{elem[entry]}\");')
-
-    if 'response' in sd:
-        for elem in sd['response']:
-            if type(elem) == dict and "name" in elem and "default" in elem: # new format
-                lines.append(f'            local_resp.{elem["name"]} = {decode_default(elem["type"], elem["default"])};')
-
-    lines.append(f'''
-            svc_{sd_name}(local_req, local_resp);
-''')
-
-    if 'response' in sd:
-        for elem in sd['response']:
-            if type(elem) == dict and "name" in elem: # new format
-                lines.append(f'            resp[\"{elem["name"]}\"] = local_resp.{elem["name"]};')
-            else:
-                for entry in elem:
-                    lines.append(f'            resp[\"{elem[entry]}\"] = local_resp.{elem[entry]};')
-    
-    lines.append(
-        f'''
-            return 0;
-        }}
-
-        std::string local_owner,    //!< \\brief local service owner
-                    local_name;     //!< \\brief local service name
-
-    public:
-        //! destruction, unregisters service
-        virtual ~svc_base_{sd_name}() {{ 
-            try {{ 
-                remove_svc_{sd_name}(); 
-            }} catch (const std::exception& e) {{ 
-            }} 
-        }};
-
-        //! svc_{sd_name}
-        /*!
-         * \param[in]   req     Service request data.
-         * \param[out]  resp    Service response data.
-         */
-        virtual void svc_{sd_name}(
-            const struct svc_req_{sd_name}& req, 
-            struct svc_resp_{sd_name}& resp) = 0;
-
-        //! adding service to robotkernel service store
-        /*!
-         * \param[in]   owner   Owner of this service.
-         * \param[in]   name    Unique name in 'owner' namespace.
-         */''')
-
-    if args.create_hdr_src_pair:
-        lines.append(f'''        void add_svc_{sd_name}(std::string owner, std::string name);
-
-        //! remove service from robotkernel service store
-        void remove_svc_{sd_name}(void);''')
-    else:
-        lines.append(f'''        void add_svc_{sd_name}(std::string owner, std::string name) {{
-            local_owner = owner;
-            local_name = name;
-
-            ::robotkernel::add_service(owner, name, 
-                {sd_name}_service_definition, 
-                std::bind(&svc_base_{sd_name}::svc_handler_{sd_name}, 
-                this, std::placeholders::_1, std::placeholders::_2));
-        }}
-
-        //! remove service from robotkernel service store
-        void remove_svc_{sd_name}(void) {{
-            ::robotkernel::remove_service(local_owner, local_name);
-        }}''')
-    lines.append(
-        f'''
-}};
-
-{create_namespace_closes(parts)}
-''')
-
-    outsd = '\n'.join(lines)
-    fd.write(f'{outsd}')
-
-#for fn in args.sd_files:
-#    sd = None
-#    sd_name = os.path.join(args.indir, fn)
-#
-#    print("service_generate: processing %s" % (sd_name))
-#    
-#    with open(sd_name, 'r') as stream:
-#        try:
-#            sd = yaml.load(stream, Loader=yaml.FullLoader)
-#        except:
-#            sd = yaml.load(stream)
-#
-#    create_datatypes(sd, outfd, fn, fn.replace('/', '_'))
-
 for fn in args.sd_files:
     sd = None
     sd_name = os.path.join(args.indir, fn)
 
     print("service_generate: processing %s" % (sd_name))
-    
+
     with open(sd_name, 'r') as stream:
         try:
             sd = yaml.load(stream, Loader=yaml.FullLoader)
         except:
             sd = yaml.load(stream)
-        
-    create_sd_string(sd, outfd, fn, fn.replace('/', '_'))
 
-lines = []
+    if "datatypes" in sd:
+        for e in sd["datatypes"]:
+            tp = dtype(e)
+            types[tp.name] = tp
 
-for k, v in global_defs.items():
-    lines.append("const std::string " + "_".join(v) + "_service_definition = " + "::".join(v) + "_service_definition;")
+    if "services" in sd:
+        for e in sd["services"]:
+            tp = svc_base(e)
+            bases[tp.name] = tp
 
-outfd.write('\n')
-outfd.write('\n'.join(lines))
+
+outfd = open(args.out, 'w+')
+
+prefix = args.name
+if prefix is None:
+    prefix = get_random_string(32)
+
+create_header(outfd, prefix)
+
+add_namespace = args.add_namespace
+if add_namespace is not None:
+    outfd.write(f'namespace {add_namespace} {{\n')
+
+for name, dtype in types.items():
+    outfd.write(dtype.create_struct())
+    outfd.write(dtype.create_yaml_coverters())
+
+for name, svc in bases.items():
+    outfd.write(svc.create_class())
 
 if add_namespace is not None:
-    outfd.write(f'\n\n}} // namespace {add_namespace}\n') 
+    outfd.write(f'\n\n}} // namespace {add_namespace}\n')
 
 create_footer(outfd, prefix)
 
