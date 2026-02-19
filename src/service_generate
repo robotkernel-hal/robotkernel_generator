@@ -83,6 +83,7 @@ class entry():
     def __init__(self, node):
         self.name = node["name"]
         self.type = node["type"]
+        self.yaml_type = self.type if self.type != "uint8_t" else "uint16_t"
         self.array = node["array"] if "array" in node else False
         self.size = ndoe["size"] if "size" in node else -1
         self.default = node["default"] if "default" in node else None
@@ -95,7 +96,7 @@ class dtype():
         self.node = node
 
     def create_struct(self):
-        fields = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.fields)
+        fields = "\n".join(f'    {decode_datatype(f, True)};' for f in self.fields)
         namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
         namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
 
@@ -115,8 +116,8 @@ typedef struct {{
 '''
 
     def create_yaml_coverters(self):
-        encode     = "\n".join(f'            node["{f.name}"] = rhs.{f.name};' for f in self.fields)
-        decode     = "\n".join(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype_new(f, self.name)}>();' for f in self.fields)
+        encode     = "\n".join(f'            node["{f.name}"] = static_cast<{decode_datatype(f, yaml_use=True)}>(rhs.{f.name});' for f in self.fields)
+        decode     = "\n".join(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();' for f in self.fields)
         validation = "\n".join(f'            if (!node["{f.name}"]) {{ return false; }}' for f in self.fields)
         typename   = "::".join(self.namespaces + [self.real_name])
 
@@ -148,8 +149,8 @@ class svc_base():
         self.response = [ entry(e) for e in node["response"] ] if "response" in node else []
 
     def create_class(self):
-        request_entries = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.request)
-        response_entries = "\n".join(f'    {decode_datatype_new(f, self.name, True)};' for f in self.response)
+        request_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.request)
+        response_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.response)
         namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
         namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
         init_request = []
@@ -159,18 +160,18 @@ class svc_base():
         for e in self.request:
             if e.default is not None:
                 init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
-                                    f'<{decode_datatype_new(e, e.name)}>(req, "{e.name}",'
+                                    f'<{decode_datatype(e)}>(req, "{e.name}",'
                                     f'{decode_default(e.type, e.default)});')
             else:
                 init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
-                                    f'<{decode_datatype_new(e, e.name)}>(req, \"{e.name}\");')
+                                    f'<{decode_datatype(e)}>(req, \"{e.name}\");')
 
         for e in self.response:
             if e.default is not None:
                 init_response.append(f'            local_resp.{e.name} = {decode_default(e.type, e.default)};')
 
         for e in self.response:
-            parse_response.append(f'            resp[\"{e.name}\"] = local_resp.{e.name};')
+            parse_response.append(f'            resp[\"{e.name}\"] = static_cast<{decode_datatype(e, yaml_use=True)}>(local_resp.{e.name});')
 
         init_response = "\n".join(init_response)
         init_request = "\n".join(init_request)
@@ -317,10 +318,8 @@ def is_primitive(datatype):
 
     return True
 
-
-
-def decode_datatype_new(elem, sd_name, with_name=False):
-    dtype = elem.type
+def decode_datatype(elem, with_name=False, yaml_use=False):
+    dtype = elem.type if not yaml_use else elem.yaml_type
 
     if not is_builtin(dtype):
         real_dtype = types[dtype]
@@ -338,15 +337,6 @@ def decode_datatype_new(elem, sd_name, with_name=False):
         dtype = f'{dtype} {elem.name}' if with_name else dtype
 
     return dtype
-
-def decode_datatype(datatype):
-    if datatype == "string":
-        return "std::string"
-
-    if datatype.startswith('vector'):
-        return "std::vector<" + decode_datatype(datatype[7:]) + ">"
-
-    return datatype
 
 def decode_default(datatype, default):
     if datatype == "string":
