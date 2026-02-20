@@ -173,7 +173,7 @@ class svc_base():
                     parse_response.append(f'#error CASE request uint8_t and array not handled in line service_generate')
                 else:
                     init_request.append(f'            local_req.{e.name} = from_uint16_vector(::robotkernel::helpers::get_as'
-                                        f'<{decode_datatype(e)}>(req, \"{e.name}\"));')
+                                        f'<{decode_datatype(e, yaml_use=True)}>(req, \"{e.name}\"));')
             else:
                 if e.default is not None:
                     init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
