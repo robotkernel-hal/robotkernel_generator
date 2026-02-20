@@ -116,8 +116,18 @@ typedef struct {{
 '''
 
     def create_yaml_coverters(self):
-        encode     = "\n".join(f'            node["{f.name}"] = static_cast<{decode_datatype(f, yaml_use=True)}>(rhs.{f.name});' for f in self.fields)
-        decode     = "\n".join(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();' for f in self.fields)
+        encode_lines = []
+        decode_lines = []
+        for f in self.fields:
+            if f.type == 'uint8_t' and f.array:
+                encode_lines.append(f'            node["{f.name}"] = to_uint16_vector(rhs.{f.name});')
+                decode_lines.append(f'            rhs.{f.name} = from_uint16_vector(node["{f.name}"].as<std::vector<uint16_t>>();')
+            else:
+                encode_lines.append(f'            node["{f.name}"] = static_cast<{decode_datatype(f, yaml_use=True)}>(rhs.{f.name});')
+                decode_lines.append(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();' for f in self.fields)
+
+        encode     = "\n".join(encode_lines)
+        decode     = "\n".join(decode_lines)
         validation = "\n".join(f'            if (!node["{f.name}"]) {{ return false; }}' for f in self.fields)
         typename   = "::".join(self.namespaces + [self.real_name])
 
@@ -158,20 +168,33 @@ class svc_base():
         parse_response = []
 
         for e in self.request:
-            if e.default is not None:
-                init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
-                                    f'<{decode_datatype(e)}>(req, "{e.name}",'
-                                    f'{decode_default(e.type, e.default)});')
+            if e.type == 'uint8_t' and e.array:
+                if e.size > 0:
+                    parse_response.append(f'#error CASE request uint8_t and array not handled in line service_generate')
+                else:
+                    init_request.append(f'            local_req.{e.name} = from_uint16_vector(::robotkernel::helpers::get_as'
+                                        f'<{decode_datatype(e)}>(req, \"{e.name}\"));')
             else:
-                init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
-                                    f'<{decode_datatype(e)}>(req, \"{e.name}\");')
+                if e.default is not None:
+                    init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                        f'<{decode_datatype(e)}>(req, "{e.name}",'
+                                        f'{decode_default(e.type, e.default)});')
+                else:
+                    init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                        f'<{decode_datatype(e)}>(req, \"{e.name}\");')
 
         for e in self.response:
             if e.default is not None:
                 init_response.append(f'            local_resp.{e.name} = {decode_default(e.type, e.default)};')
 
         for e in self.response:
-            parse_response.append(f'            resp[\"{e.name}\"] = static_cast<{decode_datatype(e, yaml_use=True)}>(local_resp.{e.name});')
+            if e.type == 'uint8_t' and e.array:
+                if e.size > 0:
+                    parse_response.append(f'#error CASE response uint8_t and array not handled in line service_generate')
+                else:
+                    parse_response.append(f'            resp[\"{e.name}\"] = to_uint16_vector(local_resp.{e.name});')
+            else:
+                parse_response.append(f'            resp[\"{e.name}\"] = static_cast<{decode_datatype(e, yaml_use=True)}>(local_resp.{e.name});')
 
         init_response = "\n".join(init_response)
         init_request = "\n".join(init_request)
@@ -213,8 +236,8 @@ class svc_base_{self.name} {{
          * @return 0
          */
         int svc_handler_{self.name}(const YAML::Node& req, YAML::Node& resp) {{
-            struct svc_req_{self.name} local_req;
-            struct svc_resp_{self.name} local_resp;
+            struct svc_req_{self.name} local_req = {{}};
+            struct svc_resp_{self.name} local_resp = {{}};
 
 {init_request}
 {init_response}
@@ -299,6 +322,31 @@ def create_header(fd, name):
     hdr = f'''#ifndef {name.upper()}_SERVICE_DEFINITIONS__H
 #define {name.upper()}_SERVICE_DEFINITIONS__H
 
+#include <vector>
+#include <cstdint>
+#include <algorithm>
+
+// Umwandlung: std::vector<uint8_t> → std::vector<uint16_t>
+inline std::vector<uint16_t> to_uint16_vector(const std::vector<uint8_t>& input) {{
+    std::vector<uint16_t> output;
+    output.reserve(input.size());
+    std::transform(input.begin(), input.end(), std::back_inserter(output),
+                   [](uint8_t b) {{ return static_cast<uint16_t>(b); }});
+    return output;
+}}
+
+// Umwandlung: std::vector<uint16_t> → std::vector<uint8_t>
+inline std::vector<uint8_t> from_uint16_vector(const std::vector<uint16_t>& input) {{
+    std::vector<uint8_t> output;
+    output.reserve(input.size());
+
+    std::transform(input.begin(), input.end(), std::back_inserter(output),
+                   [](uint16_t word) {{
+                       return static_cast<uint8_t>(word & 0xFF);  // nur unteres Byte
+                   }});
+
+    return output;
+}}
 '''
 
     fd.write(hdr)
