@@ -88,7 +88,7 @@ def to_uint16_vector_lambda(indent):
 {indent}    std::transform(input.begin(), input.end(), std::back_inserter(output),
 {indent}                   [](uint8_t b) {{ return static_cast<uint16_t>(b); }});
 {indent}    return output;
-{indent}}}
+{indent}}};
 '''
 
 def from_uint16_vector_lambda(indent):
@@ -104,7 +104,7 @@ def from_uint16_vector_lambda(indent):
 {indent}                   }});
 {indent}
 {indent}    return output;
-{indent}}}
+{indent}}};
 '''
 
 
