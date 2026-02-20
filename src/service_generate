@@ -124,7 +124,7 @@ typedef struct {{
                 decode_lines.append(f'            rhs.{f.name} = from_uint16_vector(node["{f.name}"].as<std::vector<uint16_t>>();')
             else:
                 encode_lines.append(f'            node["{f.name}"] = static_cast<{decode_datatype(f, yaml_use=True)}>(rhs.{f.name});')
-                decode_lines.append(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();' for f in self.fields)
+                decode_lines.append(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();')
 
         encode     = "\n".join(encode_lines)
         decode     = "\n".join(decode_lines)
