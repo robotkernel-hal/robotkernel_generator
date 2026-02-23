@@ -458,7 +458,7 @@ for fn in args.sd_files:
         except:
             sd = yaml.load(stream)
 
-    print(yaml.dump(sd, default_flow_style=False, sort_keys=False))
+    #print(yaml.dump(sd, default_flow_style=False, sort_keys=False))
     if "datatypes" in sd:
         for e in sd["datatypes"]:
             tp = dtype(e)
