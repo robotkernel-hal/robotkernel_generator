@@ -255,7 +255,7 @@ class svc_base():
         for e in self.request + self.response:
             if not is_builtin(e.type):
                 t = types[e.type]
-                add_datatypes.append(f'            ::robotkernel::add_datatype_desc(\n'
+                add_datatypes.append(f'            ::robotkernel::add_datatype_definition(\n'
                                      f'                "{t.name}",\n'
                                      f'                {"::".join(t.namespaces + [t.real_name])}_datatype_definition);')
         add_datatypes = "\n".join(add_datatypes)
