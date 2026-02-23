@@ -199,6 +199,7 @@ namespace YAML {{
 class svc_base():
     def __init__(self, name, node):
         self.node = node
+        self.org_name = name
         self.name, self.namespaces = decode_name(name)
         self.request = [ entry(n, e) for n, e in node["request"].items() ] if "request" in node else []
         self.response = [ entry(n, e) for n, e in node["response"].items() ] if "response" in node else []
@@ -333,8 +334,11 @@ class svc_base_{self.name} {{
 
 {add_datatypes}
 
+            ::robotkernel::add_service_definition(
+                "{self.org_name}",
+                {self.name}_service_definition);
             ::robotkernel::add_service(owner, name,
-                {self.name}_service_definition,
+                "{self.org_name}",
                 std::bind(&svc_base_{self.name}::svc_handler_{self.name},
                 this, std::placeholders::_1, std::placeholders::_2));
         }}
