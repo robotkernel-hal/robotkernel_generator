@@ -130,10 +130,10 @@ class entry():
         self.default = node["default"] if "default" in node else None
 
 class dtype():
-    def __init__(self, node):
-        self.name = node["name"]
+    def __init__(self, name, node):
+        self.name = name
         self.real_name, self.namespaces = decode_name(self.name)
-        self.fields = [ entry(e) for e in node["fields"] ]
+        self.fields = [ entry(n, e) for n, e in node["fields"].items() ]
         self.node = node
 
     def create_struct(self):
@@ -197,9 +197,9 @@ namespace YAML {{
 '''
 
 class svc_base():
-    def __init__(self, node):
+    def __init__(self, name, node):
         self.node = node
-        self.name, self.namespaces = decode_name(node["name"])
+        self.name, self.namespaces = decode_name(name)
         self.request = [ entry(n, e) for n, e in node["request"].items() ] if "request" in node else []
         self.response = [ entry(n, e) for n, e in node["response"].items() ] if "response" in node else []
 
@@ -460,13 +460,13 @@ for fn in args.sd_files:
 
     #print(yaml.dump(sd, default_flow_style=False, sort_keys=False))
     if "datatypes" in sd:
-        for e in sd["datatypes"]:
-            tp = dtype(e)
+        for n, e in sd["datatypes"].items():
+            tp = dtype(n, e)
             types[tp.name] = tp
 
     if "services" in sd:
-        for e in sd["services"]:
-            tp = svc_base(e)
+        for n, e in sd["services"].items():
+            tp = svc_base(n, e)
             bases[tp.name] = tp
 
 
