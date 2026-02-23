@@ -19,6 +19,18 @@
 import yaml
 import os
 import argparse
+from collections import OrderedDict
+
+# Definiere einen Loader, der OrderedDict verwendet
+#def construct_ordered_mapping(loader, node):
+#    loader.flatten_mapping(node)
+#    return OrderedDict(loader.construct_pairs(node))
+#
+## Registriere den Loader
+#yaml.add_constructor(
+#    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+#    construct_ordered_mapping
+#)
 
 parser = argparse.ArgumentParser(description='Generate service definition header.')
 parser.add_argument('--out', type=str, help='output header file name for service defintions')
@@ -72,7 +84,7 @@ def decode_name(inname):
 
 def yaml_to_cpp_string(data, indent="    "):
     tmp = []
-    inputlines = yaml.dump(data).split('\n')
+    inputlines = yaml.dump(data, sort_keys=False).split('\n')
     for line in inputlines:
         if line != "":
             line = line.replace('\\', '\\\\').replace('"', '\\"')
@@ -109,8 +121,8 @@ def from_uint16_vector_lambda(indent):
 
 
 class entry():
-    def __init__(self, node):
-        self.name = node["name"]
+    def __init__(self, name, node):
+        self.name = name
         self.type = node["type"]
         self.yaml_type = self.type if self.type != "uint8_t" else "uint16_t"
         self.array = node["array"] if "array" in node else False
@@ -188,8 +200,8 @@ class svc_base():
     def __init__(self, node):
         self.node = node
         self.name, self.namespaces = decode_name(node["name"])
-        self.request = [ entry(e) for e in node["request"] ] if "request" in node else []
-        self.response = [ entry(e) for e in node["response"] ] if "response" in node else []
+        self.request = [ entry(n, e) for n, e in node["request"].items() ] if "request" in node else []
+        self.response = [ entry(n, e) for n, e in node["response"].items() ] if "response" in node else []
 
     def create_class(self):
         request_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.request)
@@ -446,6 +458,7 @@ for fn in args.sd_files:
         except:
             sd = yaml.load(stream)
 
+    print(yaml.dump(sd, default_flow_style=False, sort_keys=False))
     if "datatypes" in sd:
         for e in sd["datatypes"]:
             tp = dtype(e)
