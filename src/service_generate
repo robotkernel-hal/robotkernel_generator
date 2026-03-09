@@ -54,6 +54,7 @@ from string import Template
 
 types = {}
 bases = {}
+pds = {}
 
 builtin_dtypes = [ 
     'bool',
@@ -126,7 +127,7 @@ class entry():
         self.type = node["type"]
         self.yaml_type = self.type if self.type != "uint8_t" else "uint16_t"
         self.array = node["array"] if "array" in node else False
-        self.size = ndoe["size"] if "size" in node else -1
+        self.size = node["size"] if "size" in node else -1
         self.default = node["default"] if "default" in node else None
 
 class dtype():
@@ -194,6 +195,38 @@ namespace YAML {{
         }}
     }};
 }}
+'''
+
+class pd_base():
+    def __init__(self, name, node):
+        self.node = node
+        self.org_name = name
+        self.name, self.namespaces = decode_name(name)
+        print("got ", self.name, self.namespaces)
+        self.fields = [ entry(n, e) for n, e in node.items() ]
+
+    def create_class(self):
+        namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
+        namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
+        pd_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.fields)
+
+        return f'''
+{namespaces_open}
+
+//! service definition for {self.name}
+static const std::string pd_{self.name}_datatype_name = 
+    "{self.org_name}";
+
+//! service definition for {self.name}
+static const std::string pd_{self.name}_datatype_definition = 
+{yaml_to_cpp_string(self.node)};
+
+//! service response data structure for {self.name}
+struct pd_{self.name} __atribute__((__packed__)) {{
+{pd_entries}
+}};
+
+{namespaces_close}
 '''
 
 class svc_base():
@@ -473,6 +506,11 @@ for fn in args.sd_files:
             tp = svc_base(n, e)
             bases[tp.name] = tp
 
+    if "pds" in sd:
+        for n, e in sd["pds"].items():
+            tp = pd_base(n, e)
+            pds[tp.name] = tp
+
 
 outfd = open(args.out, 'w+')
 
@@ -492,6 +530,9 @@ for name, dtype in types.items():
 
 for name, svc in bases.items():
     outfd.write(svc.create_class())
+
+for name, pd in pds.items():
+    outfd.write(pd.create_class())
 
 if add_namespace is not None:
     outfd.write(f'\n\n}} // namespace {add_namespace}\n')
