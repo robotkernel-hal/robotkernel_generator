@@ -227,7 +227,7 @@ struct __attribute__((__packed__)) pd_{self.name} {{
 }};
 
 //! pd data structure size for {self.name}
-static const size_t pd_{self.name}_size = sizeof(struct pd_{self.name]});
+static const size_t pd_{self.name}_size = sizeof(struct pd_{self.name});
 
 {namespaces_close}
 '''
