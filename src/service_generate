@@ -222,7 +222,7 @@ static const std::string pd_{self.name}_datatype_definition =
 {yaml_to_cpp_string(self.node)};
 
 //! service response data structure for {self.name}
-struct pd_{self.name} __attribute__((__packed__)) {{
+struct __attribute__((__packed__)) pd_{self.name} {{
 {pd_entries}
 }};
 
