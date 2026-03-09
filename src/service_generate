@@ -213,18 +213,21 @@ class pd_base():
         return f'''
 {namespaces_open}
 
-//! service definition for {self.name}
-static const std::string pd_{self.name}_datatype_name = 
+//! pd definition for {self.name}
+static const std::string pd_{self.name}_definition_name = 
     "{self.org_name}";
 
-//! service definition for {self.name}
-static const std::string pd_{self.name}_datatype_definition = 
+//! pd definition for {self.name}
+static const std::string pd_{self.name}_definition = 
 {yaml_to_cpp_string(self.node)};
 
-//! service response data structure for {self.name}
+//! pd data structure for {self.name}
 struct __attribute__((__packed__)) pd_{self.name} {{
 {pd_entries}
 }};
+
+//! pd data structure size for {self.name}
+static const size_t pd_{self.name}_size = sizeof(struct pd_{self.name]});
 
 {namespaces_close}
 '''
