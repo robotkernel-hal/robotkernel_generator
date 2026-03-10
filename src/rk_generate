@@ -216,11 +216,11 @@ class pd_base():
 class pd_{self.name} {{
     public:
         //! pd definition for {self.name}
-        static const std::string definition_name =
+        static constexpr std::string definition_name =
             "{self.org_name}";
 
         //! pd definition for {self.name}
-        static const std::string definition =
+        static constexpr std::string definition =
             {yaml_to_cpp_string(self.node, indent="         ")};
 
         //! pd data structure for {self.name}
@@ -229,7 +229,7 @@ class pd_{self.name} {{
         }};
 
         //! pd data structure size for {self.name}
-        static const size_t size = sizeof(struct data);
+        static constexpr size_t size = sizeof(struct data);
 
     private:
         // prevent creation and copying
