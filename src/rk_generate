@@ -242,6 +242,10 @@ class pd_{self.name} {{
         static void register_definition(void) {{
             robotkernel::add_datatype_definition(definition_name, definition);
         }}
+
+        static void remove_definition(void) {{
+            robotkernel::remove_datatype_definition(definition_name);
+        }}
 }};
 
 //! pd definition for {self.name}
