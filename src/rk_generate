@@ -254,7 +254,7 @@ const std::string pd_{self.name}::definition_name =
 
 //! pd definition for {self.name}
 const std::string pd_{self.name}::definition =
-    {yaml_to_cpp_string(self.node)};
+{yaml_to_cpp_string(self.node)};
 
 //! pd data structure size for {self.name}
 const size_t pd_{self.name}::size = sizeof(struct data);
