@@ -7,11 +7,11 @@ from conan.tools.scm import Version
 
 class MainProject(ConanFile):
     package_type = "build-scripts"
-    name = "robotkernel_service_helper"
+    name = "robotkernel_generator"
     author = "Robert Burger <robert.burger@dlr.de>"
     license = "GPLv3"
     url = f"https://rmc-github.robotic.dlr.de/robotkernel/{name}"
-    description = "robotkernel_service_helper is used to generate service definition from robotkernel yaml definitions."
+    description = "robotkernel_generator is used to generate service and pd definitions from robotkernel yaml definitions."
     settings = "os", "compiler", "build_type", "arch"
     exports_sources = ["*", "!.gitignore"]
 
