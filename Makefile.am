@@ -1,1 +1,1 @@
-dist_bin_SCRIPTS=src/service_generate
+dist_bin_SCRIPTS=src/rk_generate

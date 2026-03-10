@@ -45,7 +45,7 @@ parser.set_defaults(create_hdr_src_pair=False)
 
 args = parser.parse_args()
 
-print('service_generate: writing output to %s' % args.out)
+print('rk_generate: writing output to %s' % args.out)
 
 import random
 import string
@@ -208,26 +208,43 @@ class pd_base():
     def create_class(self):
         namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
         namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
-        pd_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.fields)
+        pd_entries = "\n".join(f'          {decode_datatype(f, True)};' for f in self.fields)
 
         return f'''
 {namespaces_open}
 
-//! pd definition for {self.name}
-static const std::string pd_{self.name}_definition_name = 
-    "{self.org_name}";
+class pd_{self.name} {{
+    public:
+        //! pd definition for {self.name}
+        static const std::string definition_name =
+            "{self.org_name}";
 
-//! pd definition for {self.name}
-static const std::string pd_{self.name}_definition = 
-{yaml_to_cpp_string(self.node)};
+        //! pd definition for {self.name}
+        static const std::string definition =
+            {yaml_to_cpp_string(self.node, indent="         ")};
 
-//! pd data structure for {self.name}
-struct __attribute__((__packed__)) pd_{self.name} {{
+        //! pd data structure for {self.name}
+        struct __attribute__((__packed__)) data {{
 {pd_entries}
-}};
+        }};
 
-//! pd data structure size for {self.name}
-static const size_t pd_{self.name}_size = sizeof(struct pd_{self.name});
+        //! pd data structure size for {self.name}
+        static const size_t size = sizeof(struct data);
+
+    private:
+        // prevent creation and copying
+        pd_{self.name}() = delete;
+        pd_{self.name}(const pd_{self.name}&) = delete;
+        pd_{self.name}& operator=(const pd_{self.name}&) = delete;
+        pd_{self.name}(pd_{self.name}&&) = delete;
+        pd_{self.name}& operator=(pd_{self.name}&&) = delete;
+        ~pd_{self.name}() = delete;
+
+    public:
+        static void register_definition(void) {{
+            robotkernel::add_datatype_definition(definition_name, definition);
+        }}
+}};
 
 {namespaces_close}
 '''
@@ -254,7 +271,7 @@ class svc_base():
         for e in self.request:
             if e.type == 'uint8_t' and e.array:
                 if e.size > 0:
-                    parse_response.append(f'#error CASE request uint8_t and array not handled in line service_generate')
+                    parse_response.append(f'#error CASE request uint8_t and array not handled in line rk_generate')
                 else:
                     init_request.append(f'            local_req.{e.name} = from_uint16_vector(::robotkernel::helpers::get_as'
                                         f'<{decode_datatype(e, yaml_use=True)}>(req, \"{e.name}\"));')
@@ -275,7 +292,7 @@ class svc_base():
         for e in self.response:
             if e.type == 'uint8_t' and e.array:
                 if e.size > 0:
-                    parse_response.append(f'#error CASE response uint8_t and array not handled in line service_generate')
+                    parse_response.append(f'#error CASE response uint8_t and array not handled in line rk_generate')
                 else:
                     parse_response.append(f'            resp[\"{e.name}\"] = to_uint16_vector(local_resp.{e.name});')
 
@@ -490,7 +507,7 @@ for fn in args.sd_files:
     sd = None
     sd_name = os.path.join(args.indir, fn)
 
-    print("service_generate: processing %s" % (sd_name))
+    print("rk_generate: processing %s" % (sd_name))
 
     with open(sd_name, 'r') as stream:
         try:
