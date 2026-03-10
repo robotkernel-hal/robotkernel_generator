@@ -216,10 +216,12 @@ class pd_base():
 class pd_{self.name} {{
     public:
         //! pd definition for {self.name}
-        static const std::string definition_name;
+        static constexpr const char* definition_name =
+            "{self.org_name}";
 
         //! pd definition for {self.name}
-        static const std::string definition;
+        static constexpr const char* definition =
+{yaml_to_cpp_string(self.node, indent="            ")};
 
         //! pd data structure for {self.name}
         struct __attribute__((__packed__)) data {{
@@ -227,7 +229,7 @@ class pd_{self.name} {{
         }};
 
         //! pd data structure size for {self.name}
-        static const size_t size;
+        static constexpr size_t size = sizeof(struct data);
 
     private:
         // prevent creation and copying
@@ -247,17 +249,6 @@ class pd_{self.name} {{
             robotkernel::remove_datatype_definition(definition_name);
         }}
 }};
-
-//! pd definition for {self.name}
-const std::string pd_{self.name}::definition_name =
-    "{self.org_name}";
-
-//! pd definition for {self.name}
-const std::string pd_{self.name}::definition =
-{yaml_to_cpp_string(self.node)};
-
-//! pd data structure size for {self.name}
-const size_t pd_{self.name}::size = sizeof(struct data);
 
 {namespaces_close}
 '''
