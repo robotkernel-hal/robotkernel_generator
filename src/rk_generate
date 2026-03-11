@@ -308,6 +308,7 @@ class svc_base():
         init_request = "\n".join(init_request)
         parse_response = "\n".join(parse_response)
         add_datatypes = []
+        remove_datatypes = []
 
         for e in self.request + self.response:
             if not is_builtin(e.type):
@@ -315,6 +316,7 @@ class svc_base():
                 add_datatypes.append(f'            ::robotkernel::add_datatype_definition(\n'
                                      f'                "{t.name}",\n'
                                      f'                {"::".join(t.namespaces + [t.real_name])}_datatype_definition);')
+                remove_datatypes.append(f'            ::robotkernel::remove_datatype_definition("{t.name}");')
         add_datatypes = "\n".join(add_datatypes)
 
         return f'''
@@ -403,6 +405,9 @@ class svc_base_{self.name} {{
         //! remove service from robotkernel service store
         void remove_svc_{self.name}(void) {{
             ::robotkernel::remove_service(local_owner, local_name);
+            ::robotkernel::remove_service_definition("{self.org_name}");
+
+{remove_datatypes}
         }}
 }};
 
