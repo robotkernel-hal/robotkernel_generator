@@ -318,6 +318,7 @@ class svc_base():
                                      f'                {"::".join(t.namespaces + [t.real_name])}_datatype_definition);')
                 remove_datatypes.append(f'            ::robotkernel::remove_datatype_definition("{t.name}");')
         add_datatypes = "\n".join(add_datatypes)
+        remove_datatypes = "\n".join(remove_datatypes)
 
         return f'''
 {namespaces_open}
