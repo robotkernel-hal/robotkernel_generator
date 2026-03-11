@@ -209,6 +209,18 @@ class pd_base():
         namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
         namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
         pd_entries = "\n".join(f'          {decode_datatype(f, True)};' for f in self.fields)
+        add_datatypes = []
+        remove_datatypes = []
+
+        for e in self.fields:
+            if not is_builtin(e.type):
+                t = types[e.type]
+                add_datatypes.append(f'            ::robotkernel::add_datatype_definition(\n'
+                                     f'                "{t.name}",\n'
+                                     f'                {"::".join(t.namespaces + [t.real_name])}_datatype_definition);')
+                remove_datatypes.append(f'            ::robotkernel::remove_datatype_definition("{t.name}");')
+        add_datatypes = "\n".join(add_datatypes)
+        remove_datatypes = "\n".join(remove_datatypes)
 
         return f'''
 {namespaces_open}
@@ -242,11 +254,13 @@ class pd_{self.name} {{
 
     public:
         static void register_definition(void) {{
-            robotkernel::add_datatype_definition(definition_name, definition);
+{add_datatypes}
+            robotkernel::add_pd_definition(definition_name, definition);
         }}
 
         static void remove_definition(void) {{
-            robotkernel::remove_datatype_definition(definition_name);
+            robotkernel::remove_pd_definition(definition_name);
+{remove_datatypes}
         }}
 }};
 
