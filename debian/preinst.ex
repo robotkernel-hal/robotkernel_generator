@@ -1,5 +1,5 @@
 #!/bin/sh
-# preinst script for robotkernel-service-helper
+# preinst script for robotkernel-generator
 #
 # see: dh_installdeb(1)
 

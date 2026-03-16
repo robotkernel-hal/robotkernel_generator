@@ -26,8 +26,8 @@ manpage.1: manpage.sgml
   <!ENTITY dhsection   "<manvolnum>SECTION</manvolnum>">
   <!ENTITY dhemail     "<email>robert.burger@dlr.de</email>">
   <!ENTITY dhusername  "Robert Burger">
-  <!ENTITY dhucpackage "<refentrytitle>Robotkernel-service-helper</refentrytitle>">
-  <!ENTITY dhpackage   "robotkernel-service-helper">
+  <!ENTITY dhucpackage "<refentrytitle>Robotkernel-generator</refentrytitle>">
+  <!ENTITY dhpackage   "robotkernel-generator">
 
   <!ENTITY debian      "<productname>Debian</productname>">
   <!ENTITY gnu         "<acronym>GNU</acronym>">

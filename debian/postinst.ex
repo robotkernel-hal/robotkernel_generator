@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for robotkernel-service-helper
+# postinst script for robotkernel-generator
 #
 # see: dh_installdeb(1)
 

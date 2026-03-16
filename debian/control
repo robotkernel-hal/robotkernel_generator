@@ -1,4 +1,4 @@
-Source: robotkernel-service-helper
+Source: robotkernel-generator
 Section: unknown
 Priority: optional
 Maintainer: Robert Burger <robert.burger@dlr.de>
@@ -9,7 +9,7 @@ Vcs-Browser: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_h
 Vcs-Git: https://rmc-github.robotic.dlr.de/robotkernel/robotkernel_service_helper.git
 Rules-Requires-Root: no
 
-Package: robotkernel-service-helper
+Package: robotkernel-generator
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, python3-yaml (>= 5)
 Description: Helper to generate robotkernel service header from service message description files.

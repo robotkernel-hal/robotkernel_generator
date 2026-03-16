@@ -1,4 +1,4 @@
 #
-# Regular cron jobs for the robotkernel-service-helper package
+# Regular cron jobs for the robotkernel-generator package
 #
-0 4	* * *	root	[ -x /usr/bin/robotkernel-service-helper_maintenance ] && /usr/bin/robotkernel-service-helper_maintenance
+0 4	* * *	root	[ -x /usr/bin/robotkernel-generator_maintenance ] && /usr/bin/robotkernel-generator_maintenance

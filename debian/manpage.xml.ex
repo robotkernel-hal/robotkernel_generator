@@ -56,9 +56,9 @@ man(1), man(7), http://www.tldp.org/HOWTO/Man-Page/
   <!ENTITY dhsection   "SECTION">
   <!-- TITLE should be something like "User commands" or similar (see
        http://www.tldp.org/HOWTO/Man-Page/q2.html). -->
-  <!ENTITY dhtitle     "robotkernel-service-helper User Manual">
-  <!ENTITY dhucpackage "Robotkernel-service-helper">
-  <!ENTITY dhpackage   "robotkernel-service-helper">
+  <!ENTITY dhtitle     "robotkernel-generator User Manual">
+  <!ENTITY dhucpackage "Robotkernel-generator">
+  <!ENTITY dhpackage   "robotkernel-generator">
 ]>
 
 <refentry>

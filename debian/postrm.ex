@@ -1,5 +1,5 @@
 #!/bin/sh
-# postrm script for robotkernel-service-helper
+# postrm script for robotkernel-generator
 #
 # see: dh_installdeb(1)
 
