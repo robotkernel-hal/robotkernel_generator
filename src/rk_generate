@@ -162,13 +162,21 @@ typedef struct {{
         encode_lines = []
         decode_lines = []
         for f in self.fields:
-            if f.type == 'uint8_t' and f.array:
+            if f.type == 'uint8_t' and f.array and f.size <= 0:
                 encode_lines.append(f'            node["{f.name}"] = to_uint16_vector(rhs.{f.name});')
                 decode_lines.append(f'            rhs.{f.name} = from_uint16_vector(node["{f.name}"].as<std::vector<uint16_t>>();')
                 need_lambdas = True
             else:
-                encode_lines.append(f'            node["{f.name}"] = static_cast<{decode_datatype(f, yaml_use=True)}>(rhs.{f.name});')
-                decode_lines.append(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();')
+                if f.array and f.size > 0:
+                    encode_lines.append(f'            std::array<{f.type}, {f.size}> arr;');
+                    encode_lines.append(f'            memcpy(&arr[0], &rhs.{f.name}[0], {f.size} * sizeof({f.type}));')
+                    encode_lines.append(f'            node["values"] = arr;')
+
+                    decode_lines.append(f'            std::array<{f.type}, {f.size}> arr = node["{f.name}"].as<std::array<{f.type}, {f.size}>>();')
+                    decode_lines.append(f'            memcpy(&rhs.{f.name}[0], &arr[0], {f.size} * sizeof({f.type}));')
+                else:
+                    encode_lines.append(f'            node["{f.name}"] = static_cast<const {decode_datatype(f, yaml_use=True)}>(rhs.{f.name});')
+                    decode_lines.append(f'            rhs.{f.name} = node["{f.name}"].as<{decode_datatype(f)}>();')
 
         encode     = "\n".join(encode_lines)
         decode     = "\n".join(decode_lines)
