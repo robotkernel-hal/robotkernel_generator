@@ -1,0 +1,7 @@
+robotkernel-module-{deb_mod_name} for Debian
+----------------------------------------
+
+<this file describes information about the source package, see Debian policy
+manual section 4.14. You WILL either need to modify or delete this file>
+
+ -- {mod_author} {mod_date}

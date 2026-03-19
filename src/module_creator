@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+# 
+# This file is part of robotkernel_generator.
+# 
+# robotkernel_generator is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 3 of the License, or (at your option) any later version.
+# 
+# robotkernel_generator is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+# 
+# You should have received a copy of the GNU Lesser General Public License
+# along with robotkernel; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+import yaml
+import os
+import argparse
+
+parser = argparse.ArgumentParser(description='Generate service definition header.')
+parser.add_argument('--mod-name', type=str, help='output header file name for service defintions')
+parser.add_argument('--author', type=str, help='module author in form like "Max Mustermann <max.mustermann@domain.com>"')
+parser.add_argument('--desc', type=str, help='small module description.')
+#parser.add_argument('--indir', type=str, help='input directory with svc_def files')
+#parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
+#                    help='yaml service definition files')
+#parser.add_argument('--name', type=str, help='base service definition name')
+#parser.add_argument('--add_namespace', type=str, help='additional base namespace')
+#parser.add_argument('--create-hdr-src-pair', dest='create_hdr_src_pair', action='store_true', help='Enable the feature')
+#parser.add_argument('--no-create-hdr-src-pair', dest='create_hdr_src_pair', action='store_false', help='Disable the feature')
+#parser.set_defaults(create_hdr_src_pair=False)
+
+args = parser.parse_args()
+
+mod_desc = args.desc
+mod_name = args.mod_name
+mod_author = args.author
+
+script_file = os.path.realpath(__file__)
+script_path = os.path.dirname(script_file)
+print("got script file: ", script_file, ", ", script_path)
+
+contrib_path= '.'
+
+if os.path.exists('/usr/share/robotkernel_generator/module_creator'):
+    contrib_path = '/usr/share/robotkernel_generator/module_creator'
+elif os.path.exists(os.path.join(script_path, '..', 'share/robotkernel_generator/module_creator')):
+    contrib_path = os.path.join(script_path, '..', 'share/robotkernel_generator/module_creator')
+
+print("found contrib files: ", contrib_path)
+
+import os
+if not os.path.exists('src'):
+    os.makedirs('src')
+
+if not os.path.exists('.github/workflows'):
+    os.makedirs('.github/workflows')
+
+if not os.path.exists('debian'):
+    os.makedirs('debian')
+
+
+module_h_tmpl = f'''//! {mod_desc}.
+/*!
+ * author: {mod_author}
+ */
+
+/*
+ * This file is part of module_{mod_name}.
+ *
+ * module_{mod_name} is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * module_{mod_name} is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with module_{mod_name}; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#ifndef MODULE_{mod_name.upper()}__MODLUE_{mod_name.upper()}_H
+#define MODULE_{mod_name.upper()}__MODULE_{mod_name.upper()}_H
+
+#include "robotkernel/module_base.h"
+
+namespace module_{mod_name} {{
+
+class {mod_name} :
+    public virtual robotkernel::shared_base,
+    public robotkernel::module_base
+{{
+    public:
+        /*! @brief Module construction.
+         *
+         * @param[in]   name    Module instance name.
+         * @param[in]   node    YAML configuration node.
+         */
+        {mod_name}(const char *name, const YAML::Node& node);
+
+        /*! @brief Module destruction. */
+        ~{mod_name}();
+
+        /*! @brief Set module state.
+         *
+         * @param[in]   target_state    New module target state.
+         */
+        int set_state(module_state_t state);
+}};
+
+}}; // namespace module_{mod_name}
+
+#endif /* MODULE_{mod_name.upper()}__MODULE_{mod_name.upper()}_H */
+'''
+
+with open(f'src/{mod_name}.h', 'w') as fd:
+    print(module_h_tmpl, file=fd)
+
+module_cpp_tmpl = f'''
+//! {mod_desc}
+/*!
+ * author: {mod_author}
+ */
+
+/*
+ * This file is part of module_{mod_name}.
+ *
+ * module_{mod_name} is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ * 
+ * module_{mod_name} is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with module_{mod_name}; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
+
+#include "{mod_name}.h"
+#include "robotkernel/helpers.h"
+#include "robotkernel/robotkernel.h"
+#include "robotkernel/exceptions.h"
+
+#include "config.h"
+
+MODULE_DEF(module_{mod_name}, module_{mod_name}::{mod_name});
+
+using namespace std;
+using namespace robotkernel;
+using namespace robotkernel::helpers;
+using namespace module_{mod_name};
+
+/*! @brief Module construction.
+ *
+ * @param[in]   name    Module instance name.
+ * @param[in]   node    YAML configuration node.
+ */
+{mod_name}::{mod_name}(const char *name, const YAML::Node& node) :
+    module_base("module_{mod_name}", name, node)
+{{
+    set_state(module_state_init);
+}}
+
+/*! @brief Module destruction. */
+{mod_name}::~{mod_name}() {{
+    // set to init, this will close serial device
+    set_state(module_state_init);
+}}
+
+/*! @brief Set module state.
+ *
+ * @param[in]   target_state    New module target state.
+ */
+int {mod_name}::set_state(module_state_t state) {{
+    // get transition
+    uint32_t transition = GEN_STATE(this->state, state);
+
+    switch (transition) {{
+        case op_2_safeop:
+        case op_2_preop:
+        case op_2_init:
+            // ====> stop sending commands
+            if (    (transition == op_2_safeop))
+                break;
+        case safeop_2_preop:
+        case safeop_2_init:
+            // ====> stop receiving measurements
+            if (    (transition == op_2_preop) ||
+                    (transition == safeop_2_preop))
+                break;
+        case preop_2_init:
+            // ====> deinit devices
+        case init_2_init:
+            // ====> do nothing
+            break;
+        case init_2_op:
+        case init_2_safeop:
+        case init_2_preop:
+            // ====> initial devices
+            if (    (transition == init_2_preop))
+                break;
+        case preop_2_op:
+        case preop_2_safeop:
+            // ====> start receiving measurements
+            if (    (transition == init_2_safeop) ||
+                    (transition == preop_2_safeop))
+                break;
+        case safeop_2_op:
+            // ====> start sending commands
+            break;
+        case op_2_op:
+        case safeop_2_safeop:
+        case preop_2_preop:
+            // ====> do nothing
+            break;
+
+        default:
+            break;
+    }}
+
+    return (this->state = state);
+}}
+
+'''
+
+with open(f'src/{mod_name}.cpp', 'w') as fd:
+    print(module_cpp_tmpl, file=fd)
+
+src_Makefile_am_tmpl = f'''lib_LTLIBRARIES = libmodule_{mod_name}.la
+
+libmodule_{mod_name}_la_SOURCES  = {mod_name}.cpp
+libmodule_{mod_name}_la_CXXFLAGS = -Wall -I$(top_srcdir)/src -I$(top_builddir) @ROBOTKERNEL_CFLAGS@
+libmodule_{mod_name}_la_LDFLAGS  = -Wall -release $(PACKAGE_VERSION)
+'''
+
+with open(f'src/Makefile.am', 'w') as fd:
+    print(src_Makefile_am_tmpl, file=fd)
+
+with open(f'Makefile.am', 'w') as fd:
+    print('''ACLOCAL_AMFLAGS = -I m4 
+SUBDIRS=src''', file=fd)
+
+configure_ac_in_tmpl = f'''
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.69])
+AC_INIT([module_{mod_name}], [PACKAGE_VERSION], [{mod_author}])
+AC_CANONICAL_TARGET
+AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
+AC_CONFIG_HEADERS([config.h])
+AC_CONFIG_MACRO_DIR([m4])
+
+# Checks for programs.
+m4_ifdef([AM_PROG_AR], [AM_PROG_AR])
+AC_PROG_CXX
+AX_CXX_COMPILE_STDCXX(14, [ext], [mandatory])
+AC_PROG_AWK
+AC_PROG_INSTALL
+AC_PROG_LIBTOOL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_INSTALL
+m4_ifdef([PKG_PROG_PKG_CONFIG], [PKG_PROG_PKG_CONFIG])
+m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [pkgconfigdir='${{libdir}}/pkgconfig' AC_SUBST([pkgconfigdir])])
+
+# Check dependencies
+PKG_CHECK_MODULES([ROBOTKERNEL], [robotkernel])
+
+# Checks for header files.
+AC_CHECK_HEADERS([stdlib.h string.h termios.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIZE_T
+
+# Checks for library functions.
+AC_CHECK_FUNCS([strdup])
+
+# Checks for library functions.
+AC_CHECK_LIB(dl, dlopen)
+
+AC_CONFIG_FILES([Makefile src/Makefile module_{mod_name}.pc])
+
+AC_OUTPUT
+'''
+
+with open(f'configure.ac.in', 'w') as fd:
+    print(configure_ac_in_tmpl, file=fd)
+
+conanfile_py_tmpl = f'''from conan import ConanFile
+
+class {mod_name}_conanfile(ConanFile):
+    python_requires = "conan_template/[~5]@robotkernel/stable"
+    python_requires_extend = "conan_template.RobotkernelConanFile"
+
+    name = "module_tty"
+    description = ""
+    exports_sources = ["*", "!.gitignore"]
+    requires = (
+        "robotkernel/[~6]@robotkernel/unstable",
+    )
+
+    def source(self):
+        self.run(f"sed 's|PACKAGE_VERSION|{{self.version}}|' configure.ac.in > configure.ac")
+'''
+
+with open(f'conanfile.py', 'w') as fd:
+    print(conanfile_py_tmpl, file=fd)
+
+pkg_config_tmpl = f'''prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: module_{mod_name}
+Description: {mod_desc}
+URL: rmc-github.robotic.dlr.de:robotkernel/module_{mod_name}.git
+Version: @VERSION@
+Cflags: -I@includedir@ 
+'''
+
+with open(f'module_{mod_name}.pc.in', 'w') as fd:
+    print(pkg_config_tmpl, file=fd)
+
+with open(f'README.md', 'w') as fd:
+    print(f'# module_{mod_name}', file=fd)
+
+with open(f'seqm.yaml', 'w') as fd:
+    print(f'refer to robotkernel/seqm.yaml', file=fd)
+
+from shutil import copyfile, copy2
+copy2(os.path.join(contrib_path, 'LICENSE'), '.')
+copy2(os.path.join(contrib_path, 'bootstrap.sh'), '.')
+copy2(os.path.join(contrib_path, 'rmc-build.yaml'), '.')
+copy2(os.path.join(contrib_path, 'RMC-Jenkinsfile'), '.')
+
+with open(os.path.join(contrib_path, 'github_workflows_build-deb.yaml')) as fdin:
+    data = fdin.readlines()
+    data[29] = f'      PKGNAME: "module-{mod_name}"\n'
+    with open(f'.github/workflows/build-deb.yaml', 'w') as fdout:
+        fdout.writelines(data)
+
+# debian build files
+copy2(os.path.join(contrib_path, 'debian/rules'), 'debian/')
+
+from datetime import datetime
+year = datetime.now().year
+with open(os.path.join(contrib_path, 'debian/copyright')) as fdin:
+    s = fdin.read()
+    with open(f'debian/copyright', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_name=mod_name, mod_author=mod_author, mod_year=year), file=fdout)
+
+with open(os.path.join(contrib_path, 'debian/control')) as fdin:
+    s = fdin.read()
+    with open(f'debian/control', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_name=mod_name, mod_author=mod_author, mod_desc=mod_desc), file=fdout)
+
+from datetime import datetime, timezone, timedelta
+
+# Aktuelle Zeit in +0200 (z. B. MESZ)
+now = datetime.now(timezone(timedelta(hours=2)))
+
+# Formatieren
+rfc1123 = now.strftime("%a, %d %b %Y %H:%M:%S %z")
+
+with open(os.path.join(contrib_path, 'debian/README')) as fdin:
+    s = fdin.read()
+    with open(f'debian/README', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_author=mod_author, mod_date=rfc1123), file=fdout)
+with open(os.path.join(contrib_path, 'debian/README.Debian')) as fdin:
+    s = fdin.read()
+    with open(f'debian/README.Debian', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_author=mod_author, mod_date=rfc1123), file=fdout)
+with open(os.path.join(contrib_path, 'debian/README.source')) as fdin:
+    s = fdin.read()
+    with open(f'debian/README.source', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_author=mod_author, mod_date=rfc1123), file=fdout)
+with open(os.path.join(contrib_path, 'debian/changelog')) as fdin:
+    s = fdin.read()
+    with open(f'debian/changelog', 'w') as fdout:
+        print(s.format(deb_mod_name=mod_name.replace('_','-'), mod_author=mod_author, mod_date=rfc1123), file=fdout)
+
+copy2(os.path.join(contrib_path, 'debian/module--docs.docs'), f'debian/module-{mod_name.replace("_","-")}.docs')
+
+from git import Repo
+
+project_dir = '.'
+
+# 1. Repository erstellen (wenn nicht vorhanden)
+if not os.path.exists(os.path.join(project_dir, ".git")):
+    repo = Repo.init(project_dir)
+    print("✅ Git-Repository initialisiert")
+else:
+    repo = Repo(project_dir)
+    print("🔧 Repository bereits vorhanden")
+
+# 2. Alle Dateien hinzufügen
+repo.index.add(["*"])  # Alle Dateien hinzufügen
+print("➡️  Alle Dateien hinzugefügt")
+
+# 3. Commit erstellen
+commit = repo.index.commit("Initial commit")
+print(f"✅ Commit erstellt: {commit.hexsha}")
+
+# 4. Remote hinzufügen (z. B. GitHub)
+remote_url = f"git@rmc-github.robotic.dlr.de:robotkernel/module_{mod_name}.git"
+origin = repo.create_remote("origin", url=remote_url)
+print(f"➡️  Remote 'origin' hinzugefügt: {remote_url}")

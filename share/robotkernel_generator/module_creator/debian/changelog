@@ -1,0 +1,6 @@
+module-{deb_mod_name} (6.0.0~pre1) unstable; urgency=low
+
+  * prep: 6.0.0
+
+ -- {mod_author} {mod_date}
+
