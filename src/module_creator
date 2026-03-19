@@ -24,20 +24,14 @@ parser = argparse.ArgumentParser(description='Generate service definition header
 parser.add_argument('--mod-name', type=str, help='output header file name for service defintions')
 parser.add_argument('--author', type=str, help='module author in form like "Max Mustermann <max.mustermann@domain.com>"')
 parser.add_argument('--desc', type=str, help='small module description.')
-#parser.add_argument('--indir', type=str, help='input directory with svc_def files')
-#parser.add_argument('sd_files', metavar='svc_def', type=str, nargs='+',
-#                    help='yaml service definition files')
-#parser.add_argument('--name', type=str, help='base service definition name')
-#parser.add_argument('--add_namespace', type=str, help='additional base namespace')
-#parser.add_argument('--create-hdr-src-pair', dest='create_hdr_src_pair', action='store_true', help='Enable the feature')
-#parser.add_argument('--no-create-hdr-src-pair', dest='create_hdr_src_pair', action='store_false', help='Disable the feature')
-#parser.set_defaults(create_hdr_src_pair=False)
+parser.add_argument('--full-state-machine', default=False, action='store_true')
 
 args = parser.parse_args()
 
 mod_desc = args.desc
 mod_name = args.mod_name
 mod_author = args.author
+use_full_state_machine = args.full_state_machine
 
 script_file = os.path.realpath(__file__)
 script_path = os.path.dirname(script_file)
@@ -107,12 +101,36 @@ class {mod_name} :
 
         /*! @brief Module destruction. */
         ~{mod_name}();
-
+'''
+if use_full_state_machine:
+    module_h_tmpl += f'''
         /*! @brief Set module state.
          *
          * @param[in]   target_state    New module target state.
          */
-        int set_state(module_state_t state);
+        virtual int set_state(module_state_t state) override;
+'''
+else:
+    module_h_tmpl += f'''
+        /*! @brief State transition from OP to SAFEOP */
+        virtual void set_state_op_2_safeop() override;
+
+        /*! @brief State transition from SAFEOP to PREOP */
+        virtual void set_state_safeop_2_preop() override;
+
+        /*! @brief State transition from PREOP to INIT */
+        virtual void set_state_preop_2_init() override;
+
+        /*! @brief State transition from INIT to PREOP */
+        virtual void set_state_init_2_preop() override;
+
+        /*! @brief State transition from PREOP to SAFEOP */
+        virtual void set_state_preop_2_safeop() override;
+
+        /*! @brief State transition from SAFEOP to OP */
+        virtual void set_state_safeop_2_op() override;'''
+
+module_h_tmpl += f'''
 }};
 
 }}; // namespace module_{mod_name}
@@ -177,7 +195,10 @@ using namespace module_{mod_name};
     // set to init, this will close serial device
     set_state(module_state_init);
 }}
+'''
 
+if use_full_state_machine:
+    module_cpp_tmpl += f'''
 /*! @brief Set module state.
  *
  * @param[in]   target_state    New module target state.
@@ -232,6 +253,32 @@ int {mod_name}::set_state(module_state_t state) {{
     return (this->state = state);
 }}
 
+'''
+else:
+    module_cpp_tmpl += f'''
+/*! @brief State transition from OP to SAFEOP */
+void {mod_name}::set_state_op_2_safeop() {{
+}}
+
+/*! @brief State transition from SAFEOP to PREOP */
+void {mod_name}::set_state_safeop_2_preop() {{
+}}
+
+/*! @brief State transition from PREOP to INIT */
+void {mod_name}::set_state_preop_2_init() {{
+}}
+
+/*! @brief State transition from INIT to PREOP */
+void {mod_name}::set_state_init_2_preop() {{
+}}
+
+/*! @brief State transition from PREOP to SAFEOP */
+void {mod_name}::set_state_preop_2_safeop() {{
+}}
+
+/*! @brief State transition from SAFEOP to OP */
+void {mod_name}::set_state_safeop_2_op() {{
+}}
 '''
 
 with open(f'src/{mod_name}.cpp', 'w') as fd:
@@ -304,7 +351,7 @@ class {mod_name}_conanfile(ConanFile):
     python_requires = "conan_template/[~5]@robotkernel/stable"
     python_requires_extend = "conan_template.RobotkernelConanFile"
 
-    name = "module_tty"
+    name = "module_{mod_name}"
     description = ""
     exports_sources = ["*", "!.gitignore"]
     requires = (
