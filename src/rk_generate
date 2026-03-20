@@ -556,7 +556,7 @@ for fn in args.sd_files:
     if "services" in sd:
         for n, e in sd["services"].items():
             tp = svc_base(n, e)
-            bases[tp.org_.name] = tp
+            bases[tp.org_name] = tp
 
     if "pds" in sd:
         for n, e in sd["pds"].items():
