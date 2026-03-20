@@ -556,12 +556,12 @@ for fn in args.sd_files:
     if "services" in sd:
         for n, e in sd["services"].items():
             tp = svc_base(n, e)
-            bases[tp.name] = tp
+            bases[tp.org_.name] = tp
 
     if "pds" in sd:
         for n, e in sd["pds"].items():
             tp = pd_base(n, e)
-            pds[tp.name] = tp
+            pds[tp.org_name] = tp
 
 
 outfd = open(args.out, 'w+')
@@ -584,6 +584,7 @@ for name, svc in bases.items():
     outfd.write(svc.create_class())
 
 for name, pd in pds.items():
+    print("processing ", name)
     outfd.write(pd.create_class())
 
 if add_namespace is not None:
