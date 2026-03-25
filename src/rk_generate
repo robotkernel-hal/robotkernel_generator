@@ -130,6 +130,9 @@ class entry():
         self.size = node["size"] if "size" in node else -1
         self.default = node["default"] if "default" in node else None
 
+        if "bitfield" in node:
+            self.bitfield = [ (n, e["bitsize"]) for n, e in node["bitfield"].items() ]
+
 class dtype():
     def __init__(self, name, node):
         self.name = name
@@ -138,7 +141,20 @@ class dtype():
         self.node = node
 
     def create_struct(self):
-        fields = "\n".join(f'    {decode_datatype(f, True)};' for f in self.fields)
+        fields = []
+        for f in self.fields:
+            if hasattr(f, "bitfield"):
+                fields.append(f'    union {{')
+                fields.append(f'        {decode_datatype(f, True)};')
+                fields.append(f'        struct {{')
+                for bf in f.bitfield:
+                    bf_name, bf_bitsize = bf
+                    fields.append(f'            {decode_datatype(f)} {bf_name} : {bf_bitsize};')
+                fields.append(f'        }};')
+                fields.append(f'    }};')
+            else:
+                fields.append(f'    {decode_datatype(f, True)};')
+        fields = "\n".join(fields)
         namespaces_open = "\n".join(f'namespace {n} {{' for n in self.namespaces)
         namespaces_close= "\n".join(f'}}; // namespace {n}' for n in self.namespaces)
 
@@ -166,6 +182,8 @@ typedef struct {{
                 encode_lines.append(f'            node["{f.name}"] = to_uint16_vector(rhs.{f.name});')
                 decode_lines.append(f'            rhs.{f.name} = from_uint16_vector(node["{f.name}"].as<std::vector<uint16_t>>();')
                 need_lambdas = True
+            #elif hasattr(f, "bitfield"):
+
             else:
                 if f.array and f.size > 0:
                     encode_lines.append(f'            std::array<{f.type}, {f.size}> arr;');
