@@ -327,7 +327,11 @@ class svc_base():
                                         f'<{decode_datatype(e)}>(req, "{e.name}",'
                                         f'{decode_default(tmp_type, e.default)});')
                 else:
-                    init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                    if e.type == 'uint8_t':
+                        init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                        f'<uint16_t>(req, \"{e.name}\");')
+                    else:
+                        init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
                                         f'<{decode_datatype(e)}>(req, \"{e.name}\");')
 
         for e in self.response:
