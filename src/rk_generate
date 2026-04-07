@@ -323,9 +323,14 @@ class svc_base():
             else:
                 tmp_type = 'uint16_t' if e.type == 'uint8_t' else e.type
                 if e.default is not None:
-                    init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
-                                        f'<{decode_datatype(e)}>(req, "{e.name}",'
-                                        f'{decode_default(tmp_type, e.default)});')
+                    if e.type == 'uint8_t':
+                        init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                            f'<uint16_t>(req, "{e.name}", '
+                                            f'{decode_default(tmp_type, e.default)});')
+                    else:
+                        init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
+                                            f'<{decode_datatype(e)}>(req, "{e.name}", '
+                                            f'{decode_default(tmp_type, e.default)});')
                 else:
                     if e.type == 'uint8_t':
                         init_request.append(f'            local_req.{e.name} = ::robotkernel::helpers::get_as'
