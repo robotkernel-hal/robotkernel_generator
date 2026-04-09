@@ -295,11 +295,11 @@ class pd_{self.name} {{
 
 class svc_base():
     def __init__(self, name, node):
-        self.node = node
+        self.node = node 
         self.org_name = name
         self.name, self.namespaces = decode_name(name)
-        self.request = [ entry(n, e) for n, e in node["request"].items() ] if "request" in node else []
-        self.response = [ entry(n, e) for n, e in node["response"].items() ] if "response" in node else []
+        self.request = [ entry(n, e) for n, e in node["request"].items() ] if "request" in node and node["request"] else []
+        self.response = [ entry(n, e) for n, e in node["response"].items() ] if "response" in node and node["response"] else []
 
     def create_class(self):
         request_entries = "\n".join(f'    {decode_datatype(f, True)};' for f in self.request)
