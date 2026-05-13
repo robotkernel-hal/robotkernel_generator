@@ -14,7 +14,7 @@ class MainProject(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     exports_sources = ["*", "!.gitignore"]
 
-    requires = [ 'python3-dist/[*]@tools/stable' ]
+    tool_requires = [ 'python3-dist/[*]@tools/stable' ]
 
     def build(self):
         pass
