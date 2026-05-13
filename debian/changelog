@@ -1,5 +1,7 @@
-robotkernel-generator (6.0.0) unstable; urgency=low
+robotkernel-generator (6.0.0) stable; urgency=low
 
+  * parsing new yaml idl files
+  * generate yaml based robotkernel services
   * prepare: deb package release
 
  -- Robert Burger <robert.burger@dlr.de>  Mon, 4 Nov 2024 10:30:35 +0100

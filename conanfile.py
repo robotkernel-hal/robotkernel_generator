@@ -4,7 +4,6 @@ from conan import ConanFile, conan_version
 from conan.tools.files import copy
 from conan.tools.scm import Version
 
-
 class MainProject(ConanFile):
     package_type = "build-scripts"
     name = "robotkernel_generator"
