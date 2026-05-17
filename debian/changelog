@@ -1,7 +1,3 @@
-robotkernel-generator (6.0.0-4) stable; urgency=low
-
-  * repack due to fix in github action
-
 robotkernel-generator (6.0.0) stable; urgency=low
 
   * parsing new yaml idl files
