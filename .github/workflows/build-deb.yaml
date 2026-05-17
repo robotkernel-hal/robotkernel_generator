@@ -99,7 +99,7 @@ jobs:
               if echo "${GITHUB_REF_NAME}" | grep -q "\-rev"; then
                 REVISION=$(echo "${GITHUB_REF_NAME}" | sed -n 's/.*-rev\([0-9]*\)$/\1/p')
                 echo "Revision found: $REVISION"
-                FULL_VERSION="${VERSION}~${CODENAME}-${REVISION}"
+                FULL_VERSION="${VERSION}-${REVISION}~${CODENAME}"
               fi
               dch --newversion "${FULL_VERSION}" --distribution "${CODENAME}" "Pre-release for ${CODENAME}"
             fi
