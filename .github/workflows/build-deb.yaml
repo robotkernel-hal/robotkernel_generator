@@ -96,6 +96,11 @@ jobs:
               dch -b --newversion "${FULL_VERSION}" --distribution "${CODENAME}-pre" "Pre-release for ${CODENAME}-pre"
             else
               FULL_VERSION="${VERSION}~${CODENAME}"
+              if echo "${GITHUB_REF_NAME}" | grep -q "\-rev"; then
+                REVISION=$(echo "${GITHUB_REF_NAME}" | sed -n 's/.*-rev\([0-9]*\)$/\1/p')
+                echo "Revision found: $REVISION"
+                FULL_VERSION="${VERSION}~${CODENAME}-${REVISION}"
+              fi
               dch --newversion "${FULL_VERSION}" --distribution "${CODENAME}" "Pre-release for ${CODENAME}"
             fi
           fi
